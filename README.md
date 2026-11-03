@@ -1,8 +1,26 @@
 # Ling with me
 
-Ling is an animated companion for the ChatGPT/Codex desktop app. This repository contains the finished pet package and local installation scripts. You do not need Python, image generation tools, or the source artwork.
+Ling is an animated desktop companion. On Windows, it can run on its own without ChatGPT or Codex. The original pet package and installation scripts are also available for the ChatGPT desktop app.
 
-## 中文安装
+## Windows 独立桌宠
+
+下载本仓库的 `Ling-Windows.zip`，解压后双击 `Ling/Ling.exe`。请保留压缩包中的整个 `Ling` 文件夹；程序需要其中的素材和运行库。Ling 会在当前显示器的可用工作区底边待机，并随机左右行走。鼠标移到人物上会触发跳跃，单击会挥手；按住左键拖动可以换屏，松开后会贴回该屏幕底边。右键点击人物或使用系统托盘图标可暂停、继续、退出，也可从“播放动作”菜单查看其他动画。此模式不需要启动 ChatGPT 或 Codex，也不读取任务状态。
+
+如需从源码构建，在 Windows 上安装 Python 3.12，进入本仓库目录并运行：
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build-windows.ps1
+```
+
+脚本默认使用清华 PyPI 镜像安装构建依赖；如需使用官方源，可加 `-IndexUrl https://pypi.org/simple`。它会在 `dist\Ling\Ling.exe` 生成可双击运行的文件夹版程序，不会覆盖 `pet/ling` 中的原始素材。首版仅支持 Windows；没有开机自启或服装切换。
+
+## Standalone Windows companion
+
+Download `Ling-Windows.zip` from this repository, extract it, then double-click `Ling.exe` inside the extracted `Ling` folder. Keep the whole folder together. Ling idles and walks along the bottom edge of the current display's usable area. Hover over Ling to see a jump, click for a wave, or drag Ling to another display. Right-click Ling or use its system tray icon to pause, resume, quit, or preview the other animations. This mode runs without ChatGPT or Codex and does not follow task status.
+
+To build from source on Windows, install Python 3.12 and run `build-windows.ps1` from this repository. The executable will be at `dist\Ling\Ling.exe`.
+
+## ChatGPT Pets 安装 / Install for ChatGPT Pets
 
 需要 Windows 或 macOS 版 ChatGPT 桌面应用，且账号或工作区已开放 Pets 功能。请下载仓库 ZIP 并解压，或用 Git 克隆仓库。**在解压后的项目目录中**运行：
 
