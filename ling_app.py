@@ -18,8 +18,8 @@ if sys.platform == "win32":
 
     ctypes.WinDLL(str(Path(os.environ.get("SystemRoot", r"C:\Windows")) / "System32" / "icuuc.dll"))
 
-from PySide6.QtCore import QPoint, Qt, QTimer
-from PySide6.QtGui import QAction, QCursor, QGuiApplication, QIcon, QPixmap, QRegion
+from PySide6.QtCore import QPoint, QSettings, Qt, QTimer
+from PySide6.QtGui import QAction, QActionGroup, QCursor, QGuiApplication, QIcon, QPixmap, QRegion
 from PySide6.QtWidgets import QApplication, QMenu, QMessageBox, QSystemTrayIcon, QWidget
 
 
@@ -40,12 +40,24 @@ ANIMATIONS = {
 FRAME_INTERVAL_MS = 160
 MOVE_INTERVAL_MS = 33
 WALK_SPEED = 48.0  # Qt's device-independent pixels per second
+SKINS = {
+    "ling": "银色原版",
+    "ling-heart": "红心白帽",
+}
 
 
-def sheet_path() -> Path:
+def settings_path() -> Path:
+    app_data = Path(os.environ.get("LOCALAPPDATA", Path.home())) / "LingWithMe"
+    app_data.mkdir(parents=True, exist_ok=True)
+    return app_data / "settings.ini"
+
+
+def sheet_path(skin_id: str = "ling") -> Path:
     # PyInstaller's one-folder build keeps bundled data under _MEIPASS.
+    if skin_id not in SKINS:
+        raise ValueError(f"Unknown Ling skin: {skin_id}")
     root = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
-    return root / "pet" / "ling" / "spritesheet.webp"
+    return root / "pet" / skin_id / "spritesheet.webp"
 
 
 def load_frames(path: Path) -> dict[str, list[QPixmap]]:
@@ -78,9 +90,13 @@ def load_frames(path: Path) -> dict[str, list[QPixmap]]:
 
 
 class LingWindow(QWidget):
-    def __init__(self, frames: dict[str, list[QPixmap]]) -> None:
+    def __init__(self, frame_sets: dict[str, dict[str, list[QPixmap]]], skin_id: str) -> None:
         super().__init__()
-        self.frames = frames
+        self.frame_sets = frame_sets
+        self.skin_id = skin_id
+        self.frames = frame_sets[skin_id]
+        self.settings = QSettings(str(settings_path()), QSettings.Format.IniFormat)
+        self.tray: QSystemTrayIcon | None = None
         self.rng = random.Random()
         self.state = "idle"
         self.frame_index = 0
@@ -104,17 +120,23 @@ class LingWindow(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setFixedSize(CELL_WIDTH, CELL_HEIGHT)
         # A fixed union avoids spurious leave events when animated silhouettes change.
-        input_region = QRegion()
-        for animation in frames.values():
-            for pixmap in animation:
-                input_region |= QRegion(pixmap.mask())
-        self.input_region = input_region
-        self.setMask(input_region)
+        self.update_input_region()
 
         self.menu = QMenu(self)
         self.pause_action = QAction("暂停行走", self)
         self.pause_action.triggered.connect(self.toggle_pause)
         self.menu.addAction(self.pause_action)
+        wardrobe_menu = self.menu.addMenu("变装")
+        wardrobe_group = QActionGroup(self)
+        wardrobe_group.setExclusive(True)
+        self.skin_actions = {}
+        for variant, label in SKINS.items():
+            action = wardrobe_menu.addAction(label)
+            action.setCheckable(True)
+            action.setChecked(variant == self.skin_id)
+            wardrobe_group.addAction(action)
+            action.triggered.connect(lambda checked=False, name=variant: self.change_skin(name))
+            self.skin_actions[variant] = action
         actions_menu = self.menu.addMenu("播放动作")
         for label, state in (
             ("挥手", "waving"),
@@ -164,6 +186,34 @@ class LingWindow(QWidget):
 
     def show_frame(self) -> None:
         self.update()
+
+    def update_input_region(self) -> None:
+        region = QRegion()
+        for animation in self.frames.values():
+            for pixmap in animation:
+                region |= QRegion(pixmap.mask())
+        self.input_region = region
+        self.setMask(region)
+
+    def change_skin(self, skin_id: str) -> None:
+        if skin_id == self.skin_id:
+            return
+        self.skin_id = skin_id
+        self.frames = self.frame_sets[skin_id]
+        self.reaction = None
+        self.walking = False
+        self.hovering = False
+        self.state = "idle"
+        self.frame_index = 0
+        self.phase_ends_at = time.monotonic() + 3.0
+        self.update_input_region()
+        self.skin_actions[skin_id].setChecked(True)
+        self.settings.setValue("skin_id", skin_id)
+        self.settings.sync()
+        if self.tray is not None:
+            self.tray.setIcon(QIcon(self.frames["idle"][0]))
+        self.place_at_bottom()
+        self.show_frame()
 
     def paintEvent(self, event) -> None:  # noqa: N802 - Qt override
         from PySide6.QtGui import QPainter
@@ -293,13 +343,16 @@ def main() -> int:
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)
     try:
-        frames = load_frames(sheet_path())
-        window = LingWindow(frames)
+        frame_sets = {skin_id: load_frames(sheet_path(skin_id)) for skin_id in SKINS}
+        saved_skin = QSettings(str(settings_path()), QSettings.Format.IniFormat).value("skin_id", "ling")
+        skin_id = saved_skin if saved_skin in SKINS else "ling"
+        window = LingWindow(frame_sets, skin_id)
     except (OSError, ValueError, RuntimeError) as exc:
         QMessageBox.critical(None, "Ling could not start", str(exc))
         return 1
 
-    tray = QSystemTrayIcon(QIcon(frames["idle"][0]), app)
+    tray = QSystemTrayIcon(QIcon(window.frames["idle"][0]), app)
+    window.tray = tray
     tray.setToolTip("Ling")
     tray.setContextMenu(window.menu)
     if QSystemTrayIcon.isSystemTrayAvailable():

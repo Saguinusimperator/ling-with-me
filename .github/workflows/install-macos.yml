@@ -13,12 +13,19 @@ jobs:
         env:
           CODEX_HOME: ${{ runner.temp }}/ling-codex-home
         run: |
-          bash ./install.sh
-          bash ./install.sh
-          cmp pet/ling/pet.json "$CODEX_HOME/pets/ling/pet.json"
-          cmp pet/ling/spritesheet.webp "$CODEX_HOME/pets/ling/spritesheet.webp"
-          printf 'conflict\n' > "$CODEX_HOME/pets/ling/pet.json"
-          if bash ./install.sh; then
-            echo 'Expected installation conflict to stop the script' >&2
-            exit 1
-          fi
+          for variant in ling ling-heart; do
+            if [[ "$variant" == ling ]]; then
+              args=()
+            else
+              args=(--variant "$variant")
+            fi
+            bash ./install.sh "${args[@]}"
+            bash ./install.sh "${args[@]}"
+            cmp "pet/$variant/pet.json" "$CODEX_HOME/pets/$variant/pet.json"
+            cmp "pet/$variant/spritesheet.webp" "$CODEX_HOME/pets/$variant/spritesheet.webp"
+            printf 'conflict\n' > "$CODEX_HOME/pets/$variant/pet.json"
+            if bash ./install.sh "${args[@]}"; then
+              echo "Expected installation conflict for $variant" >&2
+              exit 1
+            fi
+          done

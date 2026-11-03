@@ -1,16 +1,21 @@
+param(
+    [ValidateSet('ling', 'ling-heart')]
+    [string]$Variant = 'ling'
+)
+
 $ErrorActionPreference = 'Stop'
 
-$source = Join-Path $PSScriptRoot 'pet\ling'
+$source = Join-Path $PSScriptRoot "pet\$Variant"
 $sourceJson = Join-Path $source 'pet.json'
 $sourceSheet = Join-Path $source 'spritesheet.webp'
 if (-not (Test-Path -LiteralPath $sourceJson -PathType Leaf) -or
     -not (Test-Path -LiteralPath $sourceSheet -PathType Leaf)) {
-    throw 'Ling pet files are missing. Download the complete repository and run this script from it.'
+    throw "$Variant pet files are missing. Download the complete repository and run this script from it."
 }
 
 $pet = Get-Content -LiteralPath $sourceJson -Raw | ConvertFrom-Json
-if ($pet.id -ne 'ling' -or $pet.spritesheetPath -ne 'spritesheet.webp') {
-    throw 'pet/ling/pet.json does not describe the expected Ling package.'
+if ($pet.id -ne $Variant -or $pet.spritesheetPath -ne 'spritesheet.webp') {
+    throw "pet/$Variant/pet.json does not describe the expected package."
 }
 
 $codexHome = if ([string]::IsNullOrWhiteSpace($env:CODEX_HOME)) {
@@ -19,7 +24,7 @@ $codexHome = if ([string]::IsNullOrWhiteSpace($env:CODEX_HOME)) {
     $env:CODEX_HOME
 }
 $petsDir = Join-Path $codexHome 'pets'
-$destination = Join-Path $petsDir 'ling'
+$destination = Join-Path $petsDir $Variant
 
 if (Test-Path -LiteralPath $destination) {
     if (-not (Test-Path -LiteralPath $destination -PathType Container)) {
@@ -38,14 +43,14 @@ if (Test-Path -LiteralPath $destination) {
                  ((Get-FileHash -Algorithm SHA256 -LiteralPath $sourceSheet).Hash -eq
                   (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $destination 'spritesheet.webp')).Hash)
     if (-not $sameFiles) {
-        throw "A different Ling pet already exists at $destination. Back it up or remove it manually before installing."
+        throw "A different pet already exists at $destination. Back it up or remove it manually before installing."
     }
-    Write-Host "Ling is already installed at $destination"
+    Write-Host "$Variant is already installed at $destination"
     exit 0
 }
 
 New-Item -ItemType Directory -Path $petsDir -Force | Out-Null
-$stage = Join-Path $petsDir ('.ling-install-' + [guid]::NewGuid().ToString('N'))
+$stage = Join-Path $petsDir (".$Variant-install-" + [guid]::NewGuid().ToString('N'))
 try {
     New-Item -ItemType Directory -Path $stage | Out-Null
     Copy-Item -LiteralPath $sourceJson -Destination (Join-Path $stage 'pet.json')
@@ -57,5 +62,5 @@ try {
     }
 }
 
-Write-Host "Ling installed at $destination"
-Write-Host 'Open Settings > Pets > Refresh, select Ling, then enter /pet to show it.'
+Write-Host "$Variant installed at $destination"
+Write-Host "Open Settings > Pets > Refresh, select $Variant, then enter /pet to show it."
