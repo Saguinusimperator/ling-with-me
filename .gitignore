@@ -5,3 +5,10 @@ build/
 dist/
 *.spec
 __pycache__/
+.env
+.env.*
+!.env.example
+private/
+local-notes/
+.vscode/
+*.log
