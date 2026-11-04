@@ -13,7 +13,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import ling_app as ling
-from PySide6.QtCore import QPointF, QSettings, QTimer
+from PySide6.QtCore import QEvent, QPointF, QSettings, QTimer
 from PySide6.QtGui import QColor, QImage, QMouseEvent, QPainter
 from PySide6.QtWidgets import QLabel, QLayout, QSystemTrayIcon, QVBoxLayout, QWidget
 
@@ -96,15 +96,30 @@ def main():
 
         def attach():
             window = target()
-            anchor = ling.PERCH_ANCHORS[pet.skin_id]
-            pet.move(round(window.rect[0] + 240 - anchor[0]), round(window.rect[1] - 204))
-            check("native window attach", pet.try_perch())
+            start = (pet.x()+96, pet.y()+104)
+            destination = (window.rect[0]+240, window.rect[1]-100)
+            mouse(QEvent.Type.MouseButtonPress, (96,104), start, ling.Qt.MouseButton.LeftButton, ling.Qt.MouseButton.LeftButton)
+            mouse(QEvent.Type.MouseMove, (96,104), destination, ling.Qt.MouseButton.NoButton, ling.Qt.MouseButton.LeftButton)
+            mouse(QEvent.Type.MouseButtonRelease, (96,104), destination, ling.Qt.MouseButton.LeftButton, ling.Qt.MouseButton.NoButton)
+            check("native window attach", pet.perch_handle is not None and pet.perch_edge == "top")
             wait()
             return window
 
         def mouse(kind, local, global_pos, button, buttons):
             event = QMouseEvent(kind, QPointF(*local), QPointF(*global_pos), button, buttons, ling.Qt.KeyboardModifier.NoModifier)
             app.sendEvent(pet, event)
+
+        def hang():
+            window = target()
+            start = (pet.x()+96, pet.y()+104)
+            destination = (window.rect[0]+min(240, (window.rect[2]-window.rect[0])/2), window.rect[3])
+            mouse(QEvent.Type.MouseButtonPress, (96,104), start, ling.Qt.MouseButton.LeftButton, ling.Qt.MouseButton.LeftButton)
+            mouse(QEvent.Type.MouseMove, (96,104), destination, ling.Qt.MouseButton.NoButton, ling.Qt.MouseButton.LeftButton)
+            check("drag preview does not bind", pet.perch_handle is None)
+            check("lower edge release hint", pet.drag_hint == "松开即可抓住这个窗口下沿")
+            mouse(QEvent.Type.MouseButtonRelease, (96,104), destination, ling.Qt.MouseButton.LeftButton, ling.Qt.MouseButton.NoButton)
+            check("release binds hanging", pet.state == "hanging" and pet.perch_edge == "bottom")
+            wait()
 
         try:
             frames = {skin: ling.load_frames(ling.sheet_path(skin)) for skin in ling.SKINS}
@@ -169,7 +184,6 @@ def main():
                 blocker.wait(timeout=5)
             command("geometry", rect=[250, 420, 700, 350])
             # Exercise Qt drag events, including reattachment and drag-away.
-            from PySide6.QtCore import QEvent
             left = ling.Qt.MouseButton.LeftButton
             none = ling.Qt.MouseButton.NoButton
             start = (pet.x()+96, pet.y()+104)
@@ -210,6 +224,114 @@ def main():
                 check("second monitor follows", pet.perch_handle is not None and pet.screen == app.screens()[1])
                 command("geometry", rect=[250, 420, 700, 350])
                 check("returns across monitors", pet.perch_handle is not None and pet.screen == app.screens()[0])
+            pet.return_to_desktop()
+            if not pet.paused:
+                pet.toggle_pause()
+            window = target()
+            pet.move(round(window.rect[0]+144), round(window.rect[3]-104))
+            pet.follow_window()
+            pet.advance_motion()
+            wait()
+            check("stationary overlap does not bind", pet.perch_handle is None)
+            check("binding rejects a call without dragging", not pet.try_perch())
+            start = (pet.x()+96, pet.y()+104)
+            mouse(QEvent.Type.MouseButtonPress, (96,104), start, left, left)
+            mouse(QEvent.Type.MouseButtonRelease, (96,104), start, left, none)
+            wait(850)
+            check("ordinary click on lower edge does not hang", pet.perch_handle is None)
+            command("geometry", rect=[260, 430, 700, 350])
+            check("window moving through pet does not hang", pet.perch_handle is None)
+            pet.toggle_pause()
+            pet.phase_ends_at = time.monotonic() + 2
+            pet.walking = True
+            pet.x_position = float(pet.x())
+            pet.advance_motion()
+            check("autonomous walking does not hang", pet.perch_handle is None)
+            pet.toggle_pause()
+            hang()
+            frame = pet.frame_index
+            pet.next_frame()
+            check("pause freezes hanging swing", pet.frame_index == frame)
+            command("geometry", rect=[300, 470, 650, 350])
+            check("paused hanging follows window", abs(pet.y() - (target().rect[3]-10)) <= 1)
+            pet.toggle_pause()
+            frame = pet.frame_index
+            wait(800)
+            check("hanging swing resumes", pet.frame_index != frame and pet.frame_timer.interval() == 250)
+            for skin in ling.SKINS:
+                pet.change_skin(skin)
+                check("hanging skin switch retains grips: " + skin,
+                      pet.state == "hanging" and abs(pet.y() - (target().rect[3]-10)) <= 1)
+                pet.frame_timer.stop()
+                from PIL import Image
+                gif_frames = []
+                for i in range(8):
+                    pet.frame_index = i
+                    image = QImage(700, 400, QImage.Format.Format_ARGB32)
+                    image.fill(QColor("#f6f8fb"))
+                    painter = QPainter(image)
+                    painter.setPen(QColor("#243447"))
+                    painter.drawText(20, 28, "Ling — live widget render preview")
+                    painter.fillRect(30, 50, 600, 100, QColor("#d4dfed"))
+                    painter.drawText(45, 80, "Window bottom edge / hanging")
+                    painter.drawPixmap(230, 140, pet.grab())
+                    painter.end()
+                    filename = out / f"{skin}-hang-{i}.png"
+                    image.save(str(filename))
+                    with Image.open(filename) as rendered:
+                        gif_frames.append(rendered.convert("RGB"))
+                gif_frames[0].save(out / f"{skin}-hanging.gif", save_all=True,
+                                   append_images=gif_frames[1:], duration=250, loop=0)
+                pet.frame_timer.start()
+            start = (pet.x()+96, pet.y()+104)
+            mouse(QEvent.Type.MouseButtonPress, (96,104), start, left, left)
+            mouse(QEvent.Type.MouseButtonRelease, (96,104), start, left, none)
+            pet.refresh_hover()
+            check("click and hover retain both grips", pet.state == "hanging" and pet.reaction is None)
+            command("geometry", rect=[300, 470, 220, 350])
+            check("hanging resize clamps", abs(pet.x() - (target().rect[2]-192)) <= 2)
+            if len(app.screens()) > 1:
+                screen = app.screens()[1].geometry()
+                command("geometry", rect=[screen.x()+100, screen.y()+450, 650, 350])
+                check("hanging follows across monitors", pet.state == "hanging" and pet.screen == app.screens()[1])
+            screen = app.screens()[0].geometry()
+            command("geometry", rect=[250, screen.bottom()-250, 700, 300])
+            check("body below screen stays hanging", pet.state == "hanging" and pet.y()+208 > screen.bottom())
+            command("geometry", rect=[250, screen.bottom()-200, 700, 300])
+            check("moving farther below screen does not clamp or detach",
+                  pet.state == "hanging" and abs(pet.y() - (target().rect[3]-10)) <= 1)
+            restore_action = next(a for a in pet.menu.actions() if a.text() == "回到桌面底边")
+            restore_action.trigger()
+            check("menu restores a clipped hanging pet", pet.perch_handle is None and pet.y() == pet.bounds()[2])
+            command("geometry", rect=[250, 420, 700, 350])
+            hang()
+            pet.start_reaction("waving")
+            check("manual action detaches hanging", pet.perch_handle is None and pet.state == "waving")
+            wait(850)
+            hang()
+            start = (pet.x()+96, pet.y()+104)
+            destination = (1100, 300)
+            mouse(QEvent.Type.MouseButtonPress, (96,104), start, left, left)
+            mouse(QEvent.Type.MouseMove, (96,104), destination, none, left)
+            check("dragging immediately releases hanging grips", pet.perch_handle is None)
+            mouse(QEvent.Type.MouseButtonRelease, (96,104), destination, left, none)
+            check("dragging away from hanging restores desktop", pet.perch_handle is None and pet.state == "idle")
+            for action in ("minimize", "hide"):
+                hang()
+                command(action)
+                check("hanging " + action + " detaches", pet.perch_handle is None)
+                command("geometry", rect=[250, 420, 700, 350])
+            hang()
+            blocker = subprocess.Popen([sys.executable, __file__, "--fixture", str(blocker_commands)])
+            try:
+                blocker_commands.write_text(json.dumps({"action": "block", "rect": [300, 650, 650, 300]}))
+                wait(900)
+                check("covered lower grip detaches", pet.perch_handle is None)
+            finally:
+                blocker_commands.write_text(json.dumps({"action": "quit"}))
+                wait()
+                blocker.wait(timeout=5)
+            hang()
             command("quit")
             child.wait(timeout=5)
             wait()

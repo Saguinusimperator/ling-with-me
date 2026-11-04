@@ -27,40 +27,49 @@ def contains(rect, x, y):
     return left <= x < right and top <= y < bottom
 
 
-def ledge_position(window, offset, anchor, size, screens, windows):
-    left, top, right, _ = window.rect
+def ledge_position(window, offset, anchor, size, screens, windows, edge="top", grip_offsets=(-22, 22)):
+    left, top, right, bottom = window.rect
     width, height = size
     if right - left < width:
         return None
     x = max(left, min(right - width, left + offset - anchor[0]))
-    y = top - anchor[1]
-    if not any(l <= x and t <= y and x + width <= r and y + height <= b
-               for l, t, r, b in screens):
+    edge_y = top if edge == "top" else bottom
+    y = edge_y - anchor[1]
+    if edge == "top" and not any(l <= x and t <= y and x + width <= r and y + height <= b
+                                 for l, t, r, b in screens):
+        return None
+    # Hanging may extend below the display. Never clamp or detach vertically.
+    if edge == "bottom" and not any(l <= x and x + width <= r for l, _, r, _ in screens):
         return None
     contact_x = x + anchor[0]
+    contact_xs = tuple(contact_x + dx for dx in grip_offsets) if edge == "bottom" else (contact_x,)
     for other in windows:
         if other.handle == window.handle:
             return x, y
-        if contains(other.rect, contact_x, top + 1):
+        if any(contains(other.rect, hand_x, edge_y + (1 if edge == "top" else -1))
+               for hand_x in contact_xs):
             return None
     return None
 
 
-def choose_overlap(windows, sprite_rect, anchor, size, screens, tolerance=28):
-    """Match a window's top edge against the visible sprite, not the pointer."""
+def choose_attachment(windows, sprite_rect, anchors, sizes, screens, tolerance=28, grip_offsets=(-22, 22)):
+    """Return a drag candidate only; the caller binds it on mouse release."""
     sprite_left, sprite_top, sprite_right, sprite_bottom = sprite_rect
     for window in windows:
-        left, top, right, _ = window.rect
+        left, top, right, bottom = window.rect
         overlap_left, overlap_right = max(left, sprite_left), min(right, sprite_right)
         if not window.candidate or overlap_left >= overlap_right:
             continue
-        if not sprite_top - tolerance <= top <= sprite_bottom + tolerance:
-            continue
         contact_x = max(overlap_left, min(overlap_right - 1, (sprite_left + sprite_right) / 2))
         offset = contact_x - left
-        position = ledge_position(window, offset, anchor, size, screens, windows)
-        if position is not None:
-            return window, offset, position
+        center_y = (sprite_top + sprite_bottom) / 2
+        edges = sorted((("top", top), ("bottom", bottom)), key=lambda e: abs(e[1] - center_y))
+        for edge, edge_y in edges:  # Stable sorting makes ties prefer the top.
+            if not sprite_top - tolerance <= edge_y <= sprite_bottom + tolerance:
+                continue
+            position = ledge_position(window, offset, anchors[edge], sizes[edge], screens, windows, edge, grip_offsets)
+            if position is not None:
+                return window, offset, position, edge
     return None
 
 

@@ -1,7 +1,7 @@
 """Run with python -m unittest test_window_perch."""
 import unittest
 
-from window_perch import WindowInfo, choose_overlap, ledge_position, logical_rect
+from window_perch import WindowInfo, choose_attachment, ledge_position, logical_rect
 
 
 class PerchGeometryTests(unittest.TestCase):
@@ -12,7 +12,9 @@ class PerchGeometryTests(unittest.TestCase):
         self.size = (192, 208)
 
     def choose(self, windows=None, sprite=(350, 300, 450, 500)):
-        return choose_overlap(windows or [self.window], sprite, self.anchor, self.size, self.screens)
+        return choose_attachment(windows or [self.window], sprite,
+                                 {"top": self.anchor, "bottom": (96, 10)},
+                                 {"top": self.size, "bottom": self.size}, self.screens)
 
     def test_threshold_and_outside_edge(self):
         self.assertIsNotNone(self.choose(sprite=(350, 428, 450, 628)))
@@ -53,8 +55,40 @@ class PerchGeometryTests(unittest.TestCase):
 
     def test_trimmed_transparent_padding_allows_lower_top_margin(self):
         window = WindowInfo(1, (100, 120, 900, 700))
-        result = choose_overlap([window], (350, 50, 450, 250), (96, 104), self.size, self.screens)
+        result = choose_attachment([window], (350, 50, 450, 250),
+                                   {"top": (96, 104), "bottom": (96, 10)},
+                                   {"top": self.size, "bottom": self.size}, self.screens)
         self.assertEqual(result[2], (304, 16))
+
+    def test_lower_edge_is_selected(self):
+        self.assertEqual(self.choose(sprite=(350, 700, 450, 900))[3], "bottom")
+
+    def test_both_edges_choose_nearest_then_top_on_tie(self):
+        short = WindowInfo(1, (100, 400, 900, 500))
+        self.assertEqual(self.choose([short], (350, 350, 450, 550))[3], "top")
+        self.assertEqual(self.choose([short], (350, 390, 450, 590))[3], "bottom")
+
+    def test_lower_edge_allows_clipping_below_screen(self):
+        low = WindowInfo(1, (100, 400, 900, 1070))
+        result = ledge_position(low, 300, (96, 10), self.size, self.screens, [low], "bottom")
+        self.assertEqual(result, (304, 1060))
+        moved = WindowInfo(1, (100, 400, 900, 1150))
+        self.assertEqual(ledge_position(moved, 300, (96, 10), self.size, self.screens, [moved], "bottom"), (304, 1140))
+
+    def test_lower_edge_checks_contact_inside_window(self):
+        blocker = WindowInfo(2, (300, 700, 600, 810), False)
+        self.assertIsNone(self.choose([blocker, self.window], (350, 700, 450, 900)))
+
+    def test_covering_either_hand_detaches(self):
+        for left, right in ((375, 385), (417, 427)):
+            blocker = WindowInfo(2, (left, 700, right, 810), False)
+            self.assertIsNone(self.choose([blocker, self.window], (350, 700, 450, 900)))
+
+    def test_heart_grips_use_natural_narrower_spacing(self):
+        for left, right in ((382, 385), (415, 418)):
+            blocker = WindowInfo(2, (left, 700, right, 810), False)
+            self.assertIsNone(ledge_position(self.window, 300, (96, 10), self.size,
+                                            self.screens, [blocker, self.window], "bottom", (-16.56, 16.56)))
 
 
 if __name__ == "__main__":
