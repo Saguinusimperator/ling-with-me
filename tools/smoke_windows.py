@@ -4,6 +4,8 @@ Run .venv\Scripts\python tools\smoke_windows.py from the repository root.
 Only controls its own fixture and Ling widgets; settings remain isolated.
 """
 import json
+import ctypes
+from ctypes import wintypes
 from pathlib import Path
 import subprocess
 import sys
@@ -13,6 +15,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import ling_app as ling
+from window_perch import contains
 from PySide6.QtCore import QEvent, QPointF, QSettings, QTimer
 from PySide6.QtGui import QColor, QImage, QMouseEvent, QPainter
 from PySide6.QtWidgets import QLabel, QLayout, QSystemTrayIcon, QVBoxLayout, QWidget
@@ -22,6 +25,7 @@ def fixture(command_path):
     app = ling.QApplication([])
     window = QWidget()
     window.setWindowTitle("Ling ledge smoke fixture")
+    window.setWindowFlag(ling.Qt.WindowType.WindowStaysOnTopHint, True)
     layout = QVBoxLayout(window)
     layout.setSizeConstraint(QLayout.SizeConstraint.SetNoConstraint)
     layout.addWidget(QLabel("Ling window ledge test\nDisposable test window"))
@@ -68,11 +72,12 @@ def fixture(command_path):
 def main():
     app = ling.QApplication([])
     app.setQuitOnLastWindowClosed(False)
-    out = Path("build/perch-qa")
+    out = Path("build/perch-qa") / f"run-{time.time_ns()}"
     out.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="ling-smoke-") as tmp:
         commands = Path(tmp) / "commands.json"
-        child = subprocess.Popen([sys.executable, __file__, "--fixture", str(commands)])
+        child = subprocess.Popen([sys.executable, __file__, "--fixture", str(commands)],
+                                 stderr=subprocess.PIPE, text=True)
         pet = None
         checks = []
 
@@ -94,6 +99,67 @@ def main():
             assert condition, label
             checks.append(label)
 
+        def contact_stack(edge="top", point=None):
+            window = next((w for w in pet.desktop.windows(app.screens())
+                           if w.handle == int(commands.with_suffix(".ready").read_text())), None)
+            if point is None:
+                point = (pet.x() + 96, (window.rect[1] + 1 if edge == "top" else window.rect[3] - 1)
+                         if window else pet.y() + 104)
+            stack = [(w.handle, w.rect) for w in pet.desktop.windows(app.screens())
+                     if contains(w.rect, *point)]
+            return point, stack
+
+        def wait_for_perched_wave(label, handle, timeout_ms=5000):
+            started = time.monotonic()
+            while time.monotonic() - started < timeout_ms / 1000:
+                app.processEvents()
+                if (pet.reaction is None and pet.state == "perched" and
+                        pet.perch_handle == handle and pet.perch_edge == "top"):
+                    elapsed = round((time.monotonic() - started) * 1000)
+                    print(f"{label}: completed in {elapsed} ms, handle={handle}", flush=True)
+                    check(label, True)
+                    return
+                time.sleep(0.01)
+            point, stack = contact_stack()
+            user = ctypes.WinDLL("user32", use_last_error=True)
+            user.IsWindow.argtypes = [wintypes.HWND]
+            user.IsWindowVisible.argtypes = [wintypes.HWND]
+            user.IsIconic.argtypes = [wintypes.HWND]
+            user.GetWindowRect.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.RECT)]
+            user.GetWindowTextW.argtypes = [wintypes.HWND, wintypes.LPWSTR, ctypes.c_int]
+            original_rect = wintypes.RECT()
+            original_valid = bool(user.IsWindow(handle))
+            original = {
+                "valid": original_valid,
+                "visible": bool(user.IsWindowVisible(handle)) if original_valid else None,
+                "minimized": bool(user.IsIconic(handle)) if original_valid else None,
+                "rect": None,
+            }
+            if original_valid and user.GetWindowRect(handle, ctypes.byref(original_rect)):
+                original["rect"] = (original_rect.left, original_rect.top,
+                                    original_rect.right, original_rect.bottom)
+            same_title = []
+            callback_type = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+
+            @callback_type
+            def find_title(hwnd, _):
+                title = ctypes.create_unicode_buffer(256)
+                user.GetWindowTextW(hwnd, title, len(title))
+                if title.value == "Ling ledge smoke fixture":
+                    same_title.append(int(hwnd))
+                return True
+
+            user.EnumWindows.argtypes = [callback_type, wintypes.LPARAM]
+            user.EnumWindows(find_title, 0)
+            fixture_exit = child.poll()
+            fixture_stderr = child.stderr.read() if fixture_exit is not None else None
+            raise AssertionError(
+                f"{label}: timeout after {timeout_ms} ms; state={pet.state}, "
+                f"reaction={pet.reaction}, handle={pet.perch_handle}, "
+                f"edge={pet.perch_edge}, pos={pet.pos()}, fixture_exit={fixture_exit}, "
+                f"fixture_stderr={fixture_stderr}, original_hwnd={original}, "
+                f"same_title_hwnds={same_title}, contact={point}, stack={stack[:5]}")
+
         def attach():
             window = target()
             start = (pet.x()+96, pet.y()+104)
@@ -102,6 +168,9 @@ def main():
             mouse(QEvent.Type.MouseMove, (96,104), destination, ling.Qt.MouseButton.NoButton, ling.Qt.MouseButton.LeftButton)
             mouse(QEvent.Type.MouseButtonRelease, (96,104), destination, ling.Qt.MouseButton.LeftButton, ling.Qt.MouseButton.NoButton)
             check("native window attach", pet.perch_handle is not None and pet.perch_edge == "top")
+            point, stack = contact_stack()
+            check("fixture contact unobstructed", bool(stack) and stack[0][0] == window.handle)
+            print(f"fixture handle={window.handle}, rect={window.rect}, contact={point}, stack={stack[:3]}", flush=True)
             wait()
             return window
 
@@ -135,12 +204,10 @@ def main():
             check("follow while paused", abs(pet.x() - (window.rect[0] + 90 + 240 - 96)) <= 2)
             check("no hover jump on ledge", pet.state == "perched")
             pet.start_reaction("waving")
-            wait(1750)
-            check("wave returns to perch", pet.state == "perched" and pet.reaction is None)
+            wait_for_perched_wave("wave returns to perch", window.handle)
             command("geometry", rect=[340, 150, 600, 320])
             pet.start_reaction("waving")
-            wait(1750)
-            check("wave near screen top retains ledge", pet.perch_handle is not None and pet.state == "perched")
+            wait_for_perched_wave("wave near screen top retains ledge", window.handle)
             command("geometry", rect=[340, 480, 600, 320])
             for skin in ling.SKINS:
                 pet.change_skin(skin)
@@ -175,8 +242,13 @@ def main():
             blocker_commands = Path(tmp) / "blocker.json"
             blocker = subprocess.Popen([sys.executable, __file__, "--fixture", str(blocker_commands)])
             try:
+                contact, _ = contact_stack()
                 blocker_commands.write_text(json.dumps({"action": "block", "rect": [300, 300, 650, 500]}))
                 wait(700)
+                point, stack = contact_stack(point=contact)
+                blocker_handle = int(blocker_commands.with_suffix(".ready").read_text())
+                print(f"top blocker handle={blocker_handle}, contact={point}, stack={stack[:3]}", flush=True)
+                check("top blocker covers contact", bool(stack) and stack[0][0] == blocker_handle)
                 check("covered ledge detaches", pet.perch_handle is None)
             finally:
                 blocker_commands.write_text(json.dumps({"action": "quit"}))
@@ -323,8 +395,13 @@ def main():
             hang()
             blocker = subprocess.Popen([sys.executable, __file__, "--fixture", str(blocker_commands)])
             try:
+                contact, _ = contact_stack("bottom")
                 blocker_commands.write_text(json.dumps({"action": "block", "rect": [300, 650, 650, 300]}))
                 wait(900)
+                point, stack = contact_stack("bottom", contact)
+                blocker_handle = int(blocker_commands.with_suffix(".ready").read_text())
+                print(f"bottom blocker handle={blocker_handle}, contact={point}, stack={stack[:3]}", flush=True)
+                check("bottom blocker covers contact", bool(stack) and stack[0][0] == blocker_handle)
                 check("covered lower grip detaches", pet.perch_handle is None)
             finally:
                 blocker_commands.write_text(json.dumps({"action": "quit"}))
