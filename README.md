@@ -6,7 +6,7 @@
 
 ## 下载与运行
 
-正式下载入口将在发布验收完成后开放。仓库中的 `Ling-Windows.zip` 是当前候选包，尚未完成另一台干净 Windows 电脑上的试用。
+正式下载入口将在发布验收完成后开放。仓库中的 `Ling-Windows.zip` 是当前候选包，已在另一台 Windows 电脑上解压并成功启动。
 
 1. 下载完整的 `Ling-Windows.zip`。
 2. 完整解压 ZIP，保留其中整个 `Ling` 文件夹。
@@ -17,7 +17,7 @@
 ## 其他信息
 
 - [ChatGPT Pets 可选适配](docs/PETS.md)：与 Windows 独立桌宠分别使用。
-- [素材授权说明](LICENSE-ART.md)、[安装脚本许可](LICENSE-SCRIPTS)。主程序及发布包的授权范围仍在核对。
+- [主程序授权](LICENSE-CODE.md)、[素材授权说明](LICENSE-ART.md)、[安装脚本许可](LICENSE-SCRIPTS)。原创代码与素材授权已明确，第三方分发许可仍待完善。
 - [反馈问题](https://github.com/Saguinusimperator/ling-with-me/issues)。
 - [开发与构建说明](docs/DEVELOPMENT.md)。
 
