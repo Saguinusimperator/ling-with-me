@@ -58,6 +58,29 @@ def settings_path() -> Path:
     return app_data / "settings.ini"
 
 
+def confirm_microsoft_runtime_terms() -> bool:
+    settings = QSettings(str(settings_path()), QSettings.Format.IniFormat)
+    if settings.value("microsoft_terms_accepted_v1", False, type=bool):
+        return True
+
+    message = QMessageBox()
+    message.setWindowTitle("Microsoft 运行库使用条款")
+    message.setText("小灵包含运行所需的 Microsoft Visual C++ 组件。")
+    message.setInformativeText(
+        "Microsoft 保留这些组件的权利。选择“我同意”表示您同意：仅随小灵使用这些文件；"
+        "不修改或单独分发；不暗示 Microsoft 认可小灵；除法律允许外，不对这些文件进行逆向工程。"
+        "完整条款见解压目录中的 MICROSOFT-TERMS.md。"
+    )
+    agree = message.addButton("我已阅读并同意", QMessageBox.ButtonRole.AcceptRole)
+    message.addButton("不同意并退出", QMessageBox.ButtonRole.RejectRole)
+    message.exec()
+    if message.clickedButton() is not agree:
+        return False
+    settings.setValue("microsoft_terms_accepted_v1", True)
+    settings.sync()
+    return True
+
+
 def sheet_path(skin_id: str = "ling") -> Path:
     # PyInstaller's one-folder build keeps bundled data under _MEIPASS.
     if skin_id not in SKINS:
@@ -516,6 +539,8 @@ class LingWindow(QWidget):
 def main() -> int:
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)
+    if not confirm_microsoft_runtime_terms():
+        return 0
     try:
         frame_sets = {skin_id: load_frames(sheet_path(skin_id)) for skin_id in SKINS}
         saved_skin = QSettings(str(settings_path()), QSettings.Format.IniFormat).value("skin_id", "ling")
