@@ -38,7 +38,7 @@ ANIMATIONS = {
     "running": (7, 6),
     "review": (8, 6),
 }
-FRAME_INTERVAL_MS = 160
+ANIMATION_CYCLE_MS = 1600
 MOVE_INTERVAL_MS = 33
 WALK_SPEED = 48.0  # Qt's device-independent pixels per second
 PERCH_TOP_PADDING = 84
@@ -124,11 +124,14 @@ class LingWindow(QWidget):
         self.paused = False
         self.hovering = False
         self.reaction: str | None = None
+        self.playback_mode = "auto"
+        self.cycles_left = 2
+        self.animation_queue: list[str] = []
+        self.last_auto_state: str | None = None
         self.drag_offset: QPoint | None = None
         self.press_position: QPoint | None = None
         self.dragged = False
         self.x_position = 0.0
-        self.phase_ends_at = time.monotonic() + 3.0
         self.last_tick = time.monotonic()
         self.desktop = WindowsDesktop()
         self.perch_handle: int | None = None
@@ -164,6 +167,9 @@ class LingWindow(QWidget):
             self.skin_actions[variant] = action
         actions_menu = self.menu.addMenu("播放动作")
         for label, state in (
+            ("待机", "idle"),
+            ("向右走", "right"),
+            ("向左走", "left"),
             ("挥手", "waving"),
             ("跳跃", "jumping"),
             ("等待", "waiting"),
@@ -188,9 +194,10 @@ class LingWindow(QWidget):
         self.show_frame()
 
         self.frame_timer = QTimer(self)
-        self.frame_timer.setInterval(FRAME_INTERVAL_MS)
+        self.frame_timer.setTimerType(Qt.TimerType.PreciseTimer)
         self.frame_timer.timeout.connect(self.next_frame)
         self.frame_timer.start()
+        self.start_next_auto()
 
         self.motion_timer = QTimer(self)
         self.motion_timer.setInterval(MOVE_INTERVAL_MS)
@@ -206,12 +213,15 @@ class LingWindow(QWidget):
                  s.geometry().x() + s.geometry().width(),
                  s.geometry().y() + s.geometry().height()) for s in QGuiApplication.screens()]
 
-    def return_to_desktop(self) -> None:
+    def return_to_desktop(self, *, resume: bool = True) -> None:
         self.perch_handle = None
         self.screen = self.nearest_screen(self.pos() + QPoint(96, 104))
         self.x_position = float(self.x())
         self.hovering = False
-        self.stop_reaction()
+        if resume:
+            self.stop_reaction()
+        else:
+            self.begin_animation("idle", "rest")
         self.place_at_bottom()
 
     def nearest_screen(self, point):
@@ -259,7 +269,7 @@ class LingWindow(QWidget):
         self.hovering = False
         self.reaction = None
         self.walking = False
-        self.set_state(self.resting_state())
+        self.begin_animation(self.resting_state(), "rest")
         self.move(round(position[0]), round(position[1]))
         return True
 
@@ -319,11 +329,7 @@ class LingWindow(QWidget):
         self.reaction = None
         self.walking = False
         self.hovering = False
-        self.state = self.resting_state()
-        self.frame_timer.setInterval(HANG_FRAME_INTERVAL_MS if self.state == "hanging" else FRAME_INTERVAL_MS)
-        self.frame_index = 0
-        self.phase_ends_at = time.monotonic() + 3.0
-        self.update_input_region()
+        self.stop_reaction()
         self.skin_actions[skin_id].setChecked(True)
         self.settings.setValue("skin_id", skin_id)
         self.settings.sync()
@@ -353,46 +359,65 @@ class LingWindow(QWidget):
                              Qt.TransformationMode.SmoothTransformation)
 
     def next_frame(self) -> None:
-        if self.state == "hanging" and self.paused:
+        if self.drag_offset is not None or (self.paused and self.playback_mode != "manual"):
             return
-        if self.reaction is not None and self.frame_index + 1 == len(self.frames[self.state]):
-            if self.reaction == "jumping" and self.hovering:
-                self.frame_index = 0
-                self.show_frame()
-            elif self.hovering:
-                self.start_reaction("jumping")
-            else:
+        if self.frame_index + 1 == len(self.frames[self.state]):
+            if self.playback_mode in ("auto", "manual"):
+                self.cycles_left -= 1
+                if self.cycles_left == 0:
+                    self.stop_reaction()
+                    return
+            elif self.playback_mode == "hover" and not self.hovering:
                 self.stop_reaction()
-            return
+                return
         self.frame_index = (self.frame_index + 1) % len(self.frames[self.state])
         self.show_frame()
 
-    def set_state(self, state: str) -> None:
-        if state != self.state:
+    def frame_interval(self, state: str) -> int:
+        if state == "hanging":
+            return HANG_FRAME_INTERVAL_MS
+        return round(ANIMATION_CYCLE_MS / len(self.frames[state]))
+
+    def set_state(self, state: str, *, restart: bool = False) -> None:
+        if state != self.state or restart:
             self.state = state
-            self.frame_index = 0
-            self.frame_timer.setInterval(HANG_FRAME_INTERVAL_MS if state == "hanging" else FRAME_INTERVAL_MS)
+            if restart:
+                self.frame_index = 0
+                self.frame_timer.setInterval(self.frame_interval(state))
             self.update_input_region()
             self.show_frame()
 
-    def start_reaction(self, state: str) -> None:
+    def begin_animation(self, state: str, mode: str, cycles: int = 0) -> None:
+        self.playback_mode = mode
+        self.cycles_left = cycles
+        self.reaction = state if mode in ("manual", "hover") else None
+        self.walking = state in ("left", "right") and self.perch_handle is None
+        if self.walking:
+            self.direction = 1 if state == "right" else -1
+        self.set_state(state, restart=True)
+
+    def start_next_auto(self) -> None:
+        if not self.animation_queue:
+            self.animation_queue = list(ANIMATIONS)
+            self.rng.shuffle(self.animation_queue)
+            if self.animation_queue[-1] == self.last_auto_state:
+                self.animation_queue[0], self.animation_queue[-1] = self.animation_queue[-1], self.animation_queue[0]
+        state = self.animation_queue.pop()
+        self.last_auto_state = state
+        self.begin_animation(state, "auto", 2)
+
+    def start_reaction(self, state: str, *, mode: str = "manual") -> None:
         if self.perch_handle is not None and self.perch_edge == "bottom":
-            self.return_to_desktop()
-        self.reaction = state
-        self.walking = False
-        self.state = state
-        self.frame_index = 0
-        self.frame_timer.setInterval(FRAME_INTERVAL_MS)
-        self.update_input_region()
-        self.show_frame()
+            self.return_to_desktop(resume=False)
+        self.begin_animation(state, mode, 1)
         if self.perch_handle is not None:
             self.follow_window()
 
     def stop_reaction(self) -> None:
-        self.reaction = None
-        self.walking = False
-        self.phase_ends_at = time.monotonic() + 3.0
-        self.set_state(self.resting_state())
+        if self.perch_handle is None and not self.paused and self.drag_offset is None:
+            self.start_next_auto()
+        else:
+            self.begin_animation(self.resting_state(), "rest")
         if self.perch_handle is not None:
             self.follow_window()
 
@@ -403,9 +428,11 @@ class LingWindow(QWidget):
         if hovered == self.hovering:
             return
         self.hovering = hovered
+        if self.playback_mode == "manual" or self.paused:
+            return
         if hovered:
-            self.start_reaction("jumping")
-        elif self.reaction == "jumping":
+            self.start_reaction("jumping", mode="hover")
+        elif self.playback_mode == "hover":
             self.stop_reaction()
 
     def advance_motion(self) -> None:
@@ -413,19 +440,9 @@ class LingWindow(QWidget):
         elapsed = min(now - self.last_tick, 0.1)
         self.last_tick = now
         self.refresh_hover()
-        if self.perch_handle is not None or self.paused or self.drag_offset is not None or self.reaction is not None:
+        if self.perch_handle is not None or self.drag_offset is not None or (self.paused and self.playback_mode != "manual"):
             return
-
-        if now >= self.phase_ends_at:
-            self.walking = not self.walking
-            if self.walking:
-                self.direction = self.rng.choice((-1, 1))
-                self.phase_ends_at = now + self.rng.uniform(2.0, 6.0)
-            else:
-                self.phase_ends_at = now + 3.0
-
         if not self.walking:
-            self.set_state("idle")
             return
 
         left, right, _ = self.bounds()
@@ -441,10 +458,8 @@ class LingWindow(QWidget):
 
     def toggle_pause(self) -> None:
         self.paused = not self.paused
-        self.walking = False
-        self.phase_ends_at = time.monotonic() + 3.0
-        if self.reaction is None:
-            self.set_state(self.resting_state())
+        if not self.paused and self.playback_mode == "rest" and self.perch_handle is None:
+            self.start_next_auto()
         self.pause_action.setText("继续活动" if self.paused else "暂停活动")
 
     def mousePressEvent(self, event) -> None:  # noqa: N802 - Qt override
@@ -456,7 +471,7 @@ class LingWindow(QWidget):
             self.walking = False
             self.reaction = None
             self.hovering = False
-            self.set_state(self.resting_state())
+            self.begin_animation(self.resting_state(), "rest")
             event.accept()
         elif event.button() == Qt.MouseButton.RightButton:
             self.menu.exec(event.globalPosition().toPoint())
@@ -468,7 +483,7 @@ class LingWindow(QWidget):
                 self.dragged = True
         if self.drag_offset is not None and self.dragged:
             self.perch_handle = None
-            self.set_state("idle")
+            self.begin_animation("idle", "rest")
             self.move(event.globalPosition().toPoint() - self.drag_offset)
             pointer = event.globalPosition().toPoint()
             choice = self.find_perch()
@@ -492,7 +507,6 @@ class LingWindow(QWidget):
                     self.return_to_desktop()
                     QToolTip.showText(event.globalPosition().toPoint(),
                                       "未能停靠：让人偶身体与窗口上沿或下沿重叠，上沿空间不足时请将窗口下移", self, self.rect(), 4000)
-                self.phase_ends_at = time.monotonic() + 3.0
             elif self.resting_state() != "hanging":
                 self.start_reaction("waving")
             self.dragged = False
