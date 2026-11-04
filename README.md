@@ -4,7 +4,9 @@ Ling is an animated desktop companion. On Windows, it can run on its own without
 
 ## Windows 独立桌宠
 
-下载本仓库的 `Ling-Windows.zip`，解压后双击 `Ling/Ling.exe`。请保留压缩包中的整个 `Ling` 文件夹；程序需要其中的素材和运行库。Ling 会在当前显示器的可用工作区底边待机，并随机左右行走。右键“变装”可切换银色原版与红心白帽，重启后保留选择。鼠标移到人物上会触发跳跃，单击会挥手；按住左键拖动可以换屏，松开后会贴回该屏幕底边。右键点击人物或使用系统托盘图标可暂停、继续、退出，也可从“播放动作”菜单查看其他动画。此模式不需要启动 ChatGPT 或 Codex，也不读取任务状态。
+下载本仓库的 `Ling-Windows.zip`，解压后双击 `Ling/Ling.exe`。请保留压缩包中的整个 `Ling` 文件夹；程序需要其中的素材和运行库。Ling 会在当前显示器的可用工作区底边待机，并随机左右行走。右键“变装”可切换银色原版与红心白帽，重启后保留选择。鼠标移到人物上会触发跳跃，单击会挥手；按住左键拖动可以换屏。右键点击人物或使用系统托盘图标可暂停、继续、退出，也可从“播放动作”菜单查看其他动画。此模式不需要启动 ChatGPT 或 Codex，也不读取任务状态。
+
+**趴在窗口上：**按住人偶任意部位拖动，让人偶的可见身体与普通窗口上边沿相交或贴近（容差 28 个逻辑像素），看到“松开即可趴在这个窗口上沿”后松手即可。不要求鼠标、头或脚下的某个点对准；身体任意高度碰到上沿均可。窗口顶部需留约 105 个逻辑像素空间；若提示无法停靠，请先把窗口稍微下移。两套造型均支持，趴着时换装会保持停靠；单击挥手后恢复趴姿，悬停不跳跃，暂停行走仍跟随窗口。拖离窗口上沿或右键“回到桌面底边”可解除停靠。窗口被最小化、关闭、隐藏、接触点被其他窗口遮挡，或顶部空间不足时，会自动回到底边；最大化窗口通常没有足够顶部空间。重启不保留窗口绑定。此动作仅用于独立 Windows 版，不改变 ChatGPT Pets 图集。
 
 如需从源码构建，在 Windows 上安装 Python 3.12，进入本仓库目录并运行：
 
@@ -19,6 +21,10 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build-windows.ps1
 Download `Ling-Windows.zip` from this repository, extract it, then double-click `Ling.exe` inside the extracted `Ling` folder. Keep the whole folder together. Ling idles and walks along the bottom edge of the current display's usable area. The right-click Wardrobe menu switches between the silver and heart outfits and remembers the choice. Hover over Ling to see a jump, click for a wave, or drag Ling to another display. Right-click Ling or use its system tray icon to pause, resume, quit, or preview the other animations. This mode runs without ChatGPT or Codex and does not follow task status.
 
 To build from source on Windows, install Python 3.12 and run `build-windows.ps1` from this repository. The executable will be at `dist\Ling\Ling.exe`.
+
+**Window ledge:** grab any part of Ling and overlap the visible body with a normal window’s top edge (28 logical pixels of tolerance). Release when the tooltip says “松开即可趴在这个窗口上沿”. Any part of the body can touch the edge; neither the pointer nor the feet need precise alignment. Leave about 105 logical pixels above the window (move it down if necessary). Both outfits support this feature. Ling follows the window even while walking is paused; click to wave and return to resting, or switch outfits without losing the ledge. Drag away from the ledge or choose “回到桌面底边” to detach. Minimizing, closing, hiding, covering the contact point, or moving the ledge too close to the screen top returns Ling to the desktop bottom. Window bindings are not saved across restarts. This feature belongs to the standalone Windows app.
+
+验证命令：`python -m unittest test_window_perch -v` 检查吸附和坐标逻辑；`python tools/smoke_windows.py` 使用临时窗口检查真实 HWND 跟随、拖放、遮挡及失效解除，结果位于 `build/perch-qa/`，不修改个人设置。发布前用 `build-windows.ps1 -SkipPackage` 构建并验证文件夹版，再打包完整 `dist/Ling` 与三个说明/授权文件，最后解压运行验证。
 
 ## 第二套造型 / Second outfit
 

@@ -1,5 +1,6 @@
 param(
-    [string]$IndexUrl = 'https://pypi.tuna.tsinghua.edu.cn/simple'
+    [string]$IndexUrl = 'https://pypi.tuna.tsinghua.edu.cn/simple',
+    [switch]$SkipPackage
 )
 
 $ErrorActionPreference = 'Stop'
@@ -19,18 +20,22 @@ try {
     & $python -m pip install --disable-pip-version-check --index-url $IndexUrl -r requirements-build.txt
     if ($LASTEXITCODE -ne 0) { throw 'Could not install build dependencies.' }
 
-    & $python -m PyInstaller --noconfirm --clean --onedir --windowed `
+    & $python tools/build_windows.py --noconfirm --clean --onedir --windowed `
         --name Ling `
         --add-data 'pet/ling/spritesheet.webp;pet/ling' `
         --add-data 'pet/ling-heart/spritesheet.webp;pet/ling-heart' `
+        --add-data 'pet/ling/perch.png;pet/ling' `
+        --add-data 'pet/ling-heart/perch.png;pet/ling-heart' `
         --add-binary '.venv/Lib/site-packages/PySide6/plugins/platforms/qwindows.dll;PySide6/plugins/platforms' `
         ling_app.py
     if ($LASTEXITCODE -ne 0) { throw 'Could not build Ling.' }
 
-    Compress-Archive -LiteralPath 'dist\Ling', 'README.md', 'LICENSE-ART.md', 'LICENSE-SCRIPTS' `
-        -DestinationPath 'Ling-Windows.zip' -CompressionLevel Optimal -Force
     Write-Host 'Ling is ready at dist\Ling\Ling.exe'
-    Write-Host 'Portable package is ready at Ling-Windows.zip'
+    if (-not $SkipPackage) {
+        Compress-Archive -LiteralPath 'dist\Ling', 'README.md', 'LICENSE-ART.md', 'LICENSE-SCRIPTS' `
+            -DestinationPath 'Ling-Windows.zip' -CompressionLevel Optimal -Force
+        Write-Host 'Portable package is ready at Ling-Windows.zip'
+    }
 } finally {
     Pop-Location
 }

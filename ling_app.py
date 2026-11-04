@@ -10,6 +10,7 @@ import time
 from pathlib import Path
 
 from PIL import Image
+from window_perch import WindowsDesktop, choose_overlap, ledge_position
 
 if sys.platform == "win32":
     # Other desktop tools may put an incompatible ICU DLL on PATH. Load the
@@ -20,7 +21,7 @@ if sys.platform == "win32":
 
 from PySide6.QtCore import QPoint, QSettings, Qt, QTimer
 from PySide6.QtGui import QAction, QActionGroup, QCursor, QGuiApplication, QIcon, QPixmap, QRegion
-from PySide6.QtWidgets import QApplication, QMenu, QMessageBox, QSystemTrayIcon, QWidget
+from PySide6.QtWidgets import QApplication, QMenu, QMessageBox, QSystemTrayIcon, QToolTip, QWidget
 
 
 CELL_WIDTH = 192
@@ -40,6 +41,8 @@ ANIMATIONS = {
 FRAME_INTERVAL_MS = 160
 MOVE_INTERVAL_MS = 33
 WALK_SPEED = 48.0  # Qt's device-independent pixels per second
+PERCH_TOP_PADDING = 84
+PERCH_ANCHORS = {"ling": (96, 104), "ling-heart": (96, 104)}
 SKINS = {
     "ling": "银色原版",
     "ling-heart": "红心白帽",
@@ -86,6 +89,18 @@ def load_frames(path: Path) -> dict[str, list[QPixmap]]:
                 raise ValueError(f"Could not load {name} frame {column}")
             images.append(pixmap)
         frames[name] = images
+    with Image.open(path.with_name("perch.png")) as source:
+        if source.size != (CELL_WIDTH * 6, CELL_HEIGHT):
+            raise ValueError("Expected a six-frame 1152×208 perch strip")
+        images = []
+        for column in range(6):
+            buffer = io.BytesIO()
+            source.crop((column * CELL_WIDTH, 0, (column + 1) * CELL_WIDTH, CELL_HEIGHT)).save(buffer, format="PNG")
+            pixmap = QPixmap()
+            if not pixmap.loadFromData(buffer.getvalue(), "PNG"):
+                raise ValueError("Could not load perch frame")
+            images.append(pixmap)
+        frames["perched"] = images
     return frames
 
 
@@ -111,6 +126,10 @@ class LingWindow(QWidget):
         self.x_position = 0.0
         self.phase_ends_at = time.monotonic() + 3.0
         self.last_tick = time.monotonic()
+        self.desktop = WindowsDesktop()
+        self.perch_handle: int | None = None
+        self.perch_offset = 0.0
+        self.drag_hint = ""
 
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint
@@ -126,6 +145,7 @@ class LingWindow(QWidget):
         self.pause_action = QAction("暂停行走", self)
         self.pause_action.triggered.connect(self.toggle_pause)
         self.menu.addAction(self.pause_action)
+        self.menu.addAction("回到桌面底边", self.return_to_desktop)
         wardrobe_menu = self.menu.addMenu("变装")
         wardrobe_group = QActionGroup(self)
         wardrobe_group.setExclusive(True)
@@ -171,8 +191,67 @@ class LingWindow(QWidget):
         self.motion_timer.setInterval(MOVE_INTERVAL_MS)
         self.motion_timer.timeout.connect(self.advance_motion)
         self.motion_timer.start()
+        self.perch_timer = QTimer(self)
+        self.perch_timer.setInterval(100)
+        self.perch_timer.timeout.connect(self.follow_window)
+        self.perch_timer.start()
+
+    def screen_rects(self):
+        return [(s.geometry().x(), s.geometry().y(),
+                 s.geometry().x() + s.geometry().width(),
+                 s.geometry().y() + s.geometry().height()) for s in QGuiApplication.screens()]
+
+    def return_to_desktop(self) -> None:
+        self.perch_handle = None
+        self.screen = QGuiApplication.screenAt(self.pos() + QPoint(96, 104)) or QGuiApplication.primaryScreen()
+        self.x_position = float(self.x())
+        self.hovering = False
+        self.stop_reaction()
+        self.place_at_bottom()
+
+    def find_perch(self):
+        anchor = PERCH_ANCHORS[self.skin_id]
+        windows = self.desktop.windows(QGuiApplication.screens())
+        screens = self.screen_rects()
+        size = (self.width(), self.height() - PERCH_TOP_PADDING)
+        region = QRegion()
+        for pixmap in self.frames["idle"]:
+            region |= QRegion(pixmap.mask())
+        body = region.boundingRect().translated(self.pos())
+        sprite_rect = (body.x(), body.y(), body.x() + body.width(), body.y() + body.height())
+        return choose_overlap(windows, sprite_rect, anchor, size, screens)
+
+    def try_perch(self) -> bool:
+        choice = self.find_perch()
+        if choice is None:
+            return False
+        window, self.perch_offset, position = choice
+        self.perch_handle = window.handle
+        self.hovering = False
+        self.reaction = None
+        self.walking = False
+        self.set_state("perched")
+        self.move(round(position[0]), round(position[1]))
+        return True
+
+    def follow_window(self) -> None:
+        if self.perch_handle is None or self.drag_offset is not None:
+            return
+        windows = self.desktop.windows(QGuiApplication.screens())
+        target = next((w for w in windows if w.handle == self.perch_handle and w.candidate), None)
+        position = None if target is None else ledge_position(
+            target, self.perch_offset, PERCH_ANCHORS[self.skin_id],
+            (self.width(), self.height() - PERCH_TOP_PADDING), self.screen_rects(), windows)
+        if position is None:
+            self.return_to_desktop()
+            return
+        self.move(round(position[0]), round(position[1]))
+        self.x_position = float(self.x())
+        self.screen = QGuiApplication.screenAt(self.pos() + QPoint(96, 104)) or self.screen
 
     def bounds(self) -> tuple[int, int, int]:
+        if self.screen not in QGuiApplication.screens():
+            self.screen = QGuiApplication.primaryScreen()
         area = self.screen.availableGeometry()
         left = area.left()
         right = max(left, area.right() - self.width() + 1)
@@ -189,9 +268,15 @@ class LingWindow(QWidget):
 
     def update_input_region(self) -> None:
         region = QRegion()
-        for animation in self.frames.values():
+        animations = [self.frames["perched"]] if self.state == "perched" else [v for k, v in self.frames.items() if k != "perched"]
+        for animation in animations:
             for pixmap in animation:
-                region |= QRegion(pixmap.mask())
+                if self.perch_handle is not None and self.reaction:
+                    region |= QRegion(self.reaction_pixmap(pixmap).mask()).translated(47, 0)
+                elif self.state == "perched":
+                    region |= QRegion(pixmap.mask()).translated(0, -PERCH_TOP_PADDING)
+                else:
+                    region |= QRegion(pixmap.mask())
         self.input_region = region
         self.setMask(region)
 
@@ -203,7 +288,7 @@ class LingWindow(QWidget):
         self.reaction = None
         self.walking = False
         self.hovering = False
-        self.state = "idle"
+        self.state = "perched" if self.perch_handle is not None else "idle"
         self.frame_index = 0
         self.phase_ends_at = time.monotonic() + 3.0
         self.update_input_region()
@@ -212,14 +297,28 @@ class LingWindow(QWidget):
         self.settings.sync()
         if self.tray is not None:
             self.tray.setIcon(QIcon(self.frames["idle"][0]))
-        self.place_at_bottom()
+        if self.perch_handle is not None:
+            self.follow_window()
+        else:
+            self.place_at_bottom()
         self.show_frame()
 
     def paintEvent(self, event) -> None:  # noqa: N802 - Qt override
         from PySide6.QtGui import QPainter
 
         painter = QPainter(self)
-        painter.drawPixmap(0, 0, self.frames[self.state][self.frame_index])
+        pixmap = self.frames[self.state][self.frame_index]
+        if self.perch_handle is not None and self.reaction:
+            painter.drawPixmap(47, 0, self.reaction_pixmap(pixmap))
+        elif self.state == "perched":
+            painter.drawPixmap(0, -PERCH_TOP_PADDING, pixmap)
+        else:
+            painter.drawPixmap(0, 0, pixmap)
+
+    def reaction_pixmap(self, pixmap: QPixmap) -> QPixmap:
+        # Fit the standing gesture above the resting pose's ledge contact.
+        return pixmap.scaled(98, 106, Qt.AspectRatioMode.IgnoreAspectRatio,
+                             Qt.TransformationMode.SmoothTransformation)
 
     def next_frame(self) -> None:
         if self.reaction is not None and self.frame_index + 1 == len(self.frames[self.state]):
@@ -238,6 +337,7 @@ class LingWindow(QWidget):
         if state != self.state:
             self.state = state
             self.frame_index = 0
+            self.update_input_region()
             self.show_frame()
 
     def start_reaction(self, state: str) -> None:
@@ -245,16 +345,21 @@ class LingWindow(QWidget):
         self.walking = False
         self.state = state
         self.frame_index = 0
+        self.update_input_region()
         self.show_frame()
+        if self.perch_handle is not None:
+            self.follow_window()
 
     def stop_reaction(self) -> None:
         self.reaction = None
         self.walking = False
         self.phase_ends_at = time.monotonic() + 3.0
-        self.set_state("idle")
+        self.set_state("perched" if self.perch_handle is not None else "idle")
+        if self.perch_handle is not None:
+            self.follow_window()
 
     def refresh_hover(self) -> None:
-        if self.drag_offset is not None or self.menu.isVisible():
+        if self.perch_handle is not None or self.drag_offset is not None or self.menu.isVisible():
             return
         hovered = self.input_region.contains(self.mapFromGlobal(QCursor.pos()))
         if hovered == self.hovering:
@@ -270,7 +375,7 @@ class LingWindow(QWidget):
         elapsed = min(now - self.last_tick, 0.1)
         self.last_tick = now
         self.refresh_hover()
-        if self.paused or self.drag_offset is not None or self.reaction is not None:
+        if self.perch_handle is not None or self.paused or self.drag_offset is not None or self.reaction is not None:
             return
 
         if now >= self.phase_ends_at:
@@ -301,7 +406,7 @@ class LingWindow(QWidget):
         self.walking = False
         self.phase_ends_at = time.monotonic() + 3.0
         if self.reaction is None:
-            self.set_state("idle")
+            self.set_state("perched" if self.perch_handle is not None else "idle")
         self.pause_action.setText("继续行走" if self.paused else "暂停行走")
 
     def mousePressEvent(self, event) -> None:  # noqa: N802 - Qt override
@@ -309,9 +414,11 @@ class LingWindow(QWidget):
             self.drag_offset = event.globalPosition().toPoint() - self.pos()
             self.press_position = event.globalPosition().toPoint()
             self.dragged = False
+            self.drag_hint = ""
             self.walking = False
             self.reaction = None
-            self.set_state("idle")
+            self.hovering = False
+            self.set_state("perched" if self.perch_handle is not None else "idle")
             event.accept()
         elif event.button() == Qt.MouseButton.RightButton:
             self.menu.exec(event.globalPosition().toPoint())
@@ -322,17 +429,28 @@ class LingWindow(QWidget):
             if (event.globalPosition().toPoint() - self.press_position).manhattanLength() > 4:
                 self.dragged = True
         if self.drag_offset is not None and self.dragged:
+            self.perch_handle = None
+            self.set_state("idle")
             self.move(event.globalPosition().toPoint() - self.drag_offset)
+            pointer = event.globalPosition().toPoint()
+            hint = "松开即可趴在这个窗口上沿" if self.find_perch() else "让人偶身体碰到窗口上沿；窗口顶部需留约 105 像素空间"
+            if hint != self.drag_hint:
+                self.drag_hint = hint
+                QToolTip.showText(pointer + QPoint(16, 16), hint, self, self.rect(), 10000)
             event.accept()
 
     def mouseReleaseEvent(self, event) -> None:  # noqa: N802 - Qt override
         if event.button() == Qt.MouseButton.LeftButton and self.drag_offset is not None:
+            QToolTip.hideText()
             self.drag_offset = None
             self.press_position = None
             if self.dragged:
                 self.screen = QGuiApplication.screenAt(event.globalPosition().toPoint()) or self.screen
                 self.x_position = float(self.x())
-                self.place_at_bottom()
+                if not self.try_perch():
+                    self.return_to_desktop()
+                    QToolTip.showText(event.globalPosition().toPoint(),
+                                      "未能停靠：让人偶身体与窗口上沿重叠；空间不足时请将窗口下移", self, self.rect(), 4000)
                 self.phase_ends_at = time.monotonic() + 3.0
             else:
                 self.start_reaction("waving")
