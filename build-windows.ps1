@@ -34,9 +34,9 @@ try {
 
     Write-Host 'Ling is ready at dist\Ling\Ling.exe'
     if (-not $SkipPackage) {
-        Compress-Archive -LiteralPath 'dist\Ling', 'README.md', 'LICENSE-ART.md', 'LICENSE-SCRIPTS' `
+        Compress-Archive -LiteralPath 'dist\Ling', 'README.md', 'LICENSE-CODE.md', 'LICENSE-ART.md', 'LICENSE-SCRIPTS', 'THIRD-PARTY-NOTICES.md', 'MICROSOFT-TERMS.md', 'licenses' `
             -DestinationPath 'Ling-Windows.zip' -CompressionLevel Optimal -Force
-        Write-Host 'Portable package is ready at Ling-Windows.zip'
+        Write-Host 'Development package is ready at Ling-Windows.zip; verify CRT files before distribution.'
     }
 } finally {
     Pop-Location

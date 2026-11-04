@@ -44,11 +44,11 @@ git diff --check
 ## 便携 ZIP 与发布流程
 
 1. 先确认文件夹版 `dist/Ling/Ling.exe` 能启动和退出，并检查动作、换装、停靠、悬挂、暂停、菜单与托盘。
-2. 将**整个** `dist/Ling` 文件夹与 `README.md`、`LICENSE-ART.md`、`LICENSE-SCRIPTS` 一起压缩为 `Ling-Windows.zip`；不要只发送 EXE。若发布方案增加第三方许可文件，打包清单也须同步更新。
+2. 将**整个** `dist/Ling` 文件夹与 `README.md`、`LICENSE-CODE.md`、`LICENSE-ART.md`、`LICENSE-SCRIPTS`、`THIRD-PARTY-NOTICES.md`、`MICROSOFT-TERMS.md` 和 `licenses/` 一起压缩；不要只发送 EXE。正式发布包还须使用已核对的微软运行库文件。
 3. 解压 ZIP 到另一个目录，核对图集、Qt 平台插件和运行库，并实际启动解压版。记录包体大小、SHA-256 和对应源码 Commit。
 4. 检查仓库及包体没有密钥、个人路径、调试日志或私人制作记录。授权与第三方许可验收通过后，再准备 Release 和 README 正式下载入口。
 5. 正式分享前请另一台干净 Windows 电脑的使用者验证下载、解压、启动、操作与退出；记录环境、结果和限制。
 
 ## 已知边界
 
-独立桌宠目前只支持 Windows；窗口绑定不跨重启保存。当前项目未设置开机自启或自动更新。原创代码与素材授权已明确，现有候选 ZIP 已在另一台 Windows 电脑解压并成功启动；第三方分发许可和正式发布验收仍待完成。仓库外的私人素材制作记录不会随 Git 同步，需要单独备份。
+独立桌宠目前只支持 Windows；窗口绑定不跨重启保存。当前项目未设置开机自启或自动更新。许可文本已备齐；新版候选 ZIP 的第二台电脑验收及正式发布仍待完成。仓库外的私人素材制作记录不会随 Git 同步，需要单独备份。

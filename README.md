@@ -17,7 +17,7 @@
 ## 其他信息
 
 - [ChatGPT Pets 可选适配](docs/PETS.md)：与 Windows 独立桌宠分别使用。
-- [主程序授权](LICENSE-CODE.md)、[素材授权说明](LICENSE-ART.md)、[安装脚本许可](LICENSE-SCRIPTS)。原创代码与素材授权已明确，第三方分发许可仍待完善。
+- [主程序授权](LICENSE-CODE.md)、[素材授权说明](LICENSE-ART.md)、[安装脚本许可](LICENSE-SCRIPTS)、[第三方许可说明](THIRD-PARTY-NOTICES.md)和[微软组件条款](MICROSOFT-TERMS.md)。
 - [反馈问题](https://github.com/Saguinusimperator/ling-with-me/issues)。
 - [开发与构建说明](docs/DEVELOPMENT.md)。
 
