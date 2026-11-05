@@ -14,12 +14,10 @@ from PIL import Image
 IS_WINDOWS = sys.platform == "win32"
 IS_MACOS = sys.platform == "darwin"
 
-if IS_WINDOWS:
-    from window_perch import WindowsDesktop, choose_attachment, ledge_position
-else:
-    # The ledge backend talks to Win32 directly. Keep this module importable on
-    # macOS and run the pet without window docking until it has a Quartz port.
-    WindowsDesktop = choose_attachment = ledge_position = None
+from window_perch import WindowsDesktop, choose_attachment, ledge_position
+
+if IS_MACOS:
+    from macos_perch import MacDesktop
 
 if IS_WINDOWS:
     # Other desktop tools may put an incompatible ICU DLL on PATH. Load the
@@ -172,7 +170,7 @@ class LingWindow(QWidget):
         self.dragged = False
         self.x_position = 0.0
         self.last_tick = time.monotonic()
-        self.desktop = WindowsDesktop() if IS_WINDOWS else None
+        self.desktop = WindowsDesktop() if IS_WINDOWS else MacDesktop() if IS_MACOS else None
         self.perch_supported = self.desktop is not None
         self.perch_handle: int | None = None
         self.perch_edge = "top"
@@ -537,9 +535,10 @@ class LingWindow(QWidget):
             pointer = event.globalPosition().toPoint()
             if self.perch_supported:
                 choice = self.find_perch()
-                hint = ("松开即可抓住这个窗口下沿" if choice and choice[3] == "bottom" else
+                hint = (getattr(self.desktop, "unavailable_reason", "") or
+                        ("松开即可抓住这个窗口下沿" if choice and choice[3] == "bottom" else
                         "松开即可趴在这个窗口上沿" if choice else
-                        "让人偶身体碰到窗口上沿或下沿，上沿需留约 105 像素空间")
+                        "让人偶身体碰到窗口上沿或下沿，上沿需留约 105 像素空间"))
                 if hint != self.drag_hint:
                     self.drag_hint = hint
                     QToolTip.showText(pointer + QPoint(16, 16), hint, self, self.rect(), 10000)
@@ -557,6 +556,7 @@ class LingWindow(QWidget):
                     self.return_to_desktop()
                     if self.perch_supported:
                         QToolTip.showText(event.globalPosition().toPoint(),
+                                          getattr(self.desktop, "unavailable_reason", "") or
                                           "未能停靠：让人偶身体与窗口上沿或下沿重叠，上沿空间不足时请将窗口下移", self, self.rect(), 4000)
             elif self.resting_state() != "hanging":
                 self.start_reaction("waving")

@@ -1,6 +1,6 @@
 # ChatGPT Pets 可选适配
 
-仓库还提供两套 ChatGPT Pets 图集。Pets 需要 Windows 或 macOS 桌面应用及账号或工作区开放的 Pets 功能；它不是 Windows 独立桌宠的运行依赖。本仓库不提供 macOS 独立桌宠。
+仓库还提供两套 ChatGPT Pets 图集。Pets 需要 Windows 或 macOS 桌面应用及账号或工作区开放的 Pets 功能；它不是独立桌宠的运行依赖。Mac 独立桌宠的源码运行与构建见 [Mac 说明](MACOS.md)。
 
 先下载并解压仓库源码，或克隆仓库，然后在项目目录运行安装脚本。
 

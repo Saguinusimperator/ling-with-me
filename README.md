@@ -26,4 +26,4 @@ Pets 需要ChatGPT桌面应用和账号或工作区支持。
 - [反馈问题](https://github.com/Saguinusimperator/ling-with-me/issues)。
 - [开发与构建说明](docs/DEVELOPMENT.md)。
 
-The standalone companion currently targets Windows only. The v1.0 downloads are linked above.
+源码也包含 Mac 独立桌宠及窗口停靠支持，运行和构建见 [Mac 使用说明](docs/MACOS.md)。上方 v1.0 下载仍为 Windows 版。

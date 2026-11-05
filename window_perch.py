@@ -1,4 +1,4 @@
-"""Window discovery and pure geometry for the Windows ledge behaviour.
+"""Shared ledge geometry and Windows window discovery.
 
 Public rectangles use Qt logical desktop coordinates; native rectangles stay
 physical until converted using the matching monitor's origin and scale.

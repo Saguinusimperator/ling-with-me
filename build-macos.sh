@@ -54,6 +54,7 @@ fi
   --name "$APP_NAME" \
   --icon "$PWD/build/Ling.icns" \
   --osx-bundle-identifier "$BUNDLE_ID" \
+  --hidden-import macos_perch \
   --specpath build --workpath build/pyinstaller --distpath dist \
   --add-data "$PWD/pet/ling/spritesheet.webp:pet/ling" \
   --add-data "$PWD/pet/ling-heart/spritesheet.webp:pet/ling-heart" \
