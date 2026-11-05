@@ -2,7 +2,7 @@
 
 ## 启动
 
-下载完整的 `Ling-Windows.zip`，解压后打开 `Ling` 文件夹，双击 `Ling.exe`。请保留整个文件夹；单独复制 EXE 会缺少运行库和动画素材。独立桌宠不需要 Python、ChatGPT、Codex 或网络连接。正式下载入口将在发布验收完成后开放。
+从 [v1.0 Release](https://github.com/Saguinusimperator/ling-with-me/releases/tag/v1.0) 下载完整的 `Ling-Windows.zip`，解压后打开 `Ling` 文件夹，双击 `Ling.exe`。请保留整个文件夹；单独复制 EXE 会缺少运行库和动画素材。独立桌宠不需要 Python、ChatGPT、Codex 或网络连接。
 
 ## 日常操作
 

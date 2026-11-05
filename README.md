@@ -6,7 +6,12 @@
 
 ## 下载与运行
 
-正式下载入口将在发布验收完成后开放。仓库中的 `Ling-Windows.zip` 是当前候选包，已在另一台 Windows 电脑上解压并成功启动。
+从 [v1.0 Release](https://github.com/Saguinusimperator/ling-with-me/releases/tag/v1.0) 下载：
+
+- [Windows 独立桌宠：Ling-Windows.zip](https://github.com/Saguinusimperator/ling-with-me/releases/download/v1.0/Ling-Windows.zip)：Windows 10 x64 或更新版本。
+- [Codex/ChatGPT Pets：Ling-Pets.zip](https://github.com/Saguinusimperator/ling-with-me/releases/download/v1.0/Ling-Pets.zip)：两套造型，按包内 `README.md` 安装。
+
+Windows 桌宠已在另一台电脑上解压并启动。Pets 需要桌面应用和账号或工作区支持。
 
 1. 下载完整的 `Ling-Windows.zip`。
 2. 完整解压 ZIP，保留其中整个 `Ling` 文件夹。
@@ -21,4 +26,4 @@
 - [反馈问题](https://github.com/Saguinusimperator/ling-with-me/issues)。
 - [开发与构建说明](docs/DEVELOPMENT.md)。
 
-This project currently targets Windows only. The portable ZIP is a release candidate; the public download will be enabled after release checks.
+The standalone companion currently targets Windows only. The v1.0 downloads are linked above.
