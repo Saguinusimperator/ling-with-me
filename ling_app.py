@@ -1,4 +1,4 @@
-"""Standalone Windows desktop companion for Ling."""
+"""Standalone desktop companion for Ling (Windows and macOS)."""
 
 from __future__ import annotations
 
@@ -10,9 +10,18 @@ import time
 from pathlib import Path
 
 from PIL import Image
-from window_perch import WindowsDesktop, choose_attachment, ledge_position
 
-if sys.platform == "win32":
+IS_WINDOWS = sys.platform == "win32"
+IS_MACOS = sys.platform == "darwin"
+
+if IS_WINDOWS:
+    from window_perch import WindowsDesktop, choose_attachment, ledge_position
+else:
+    # The ledge backend talks to Win32 directly. Keep this module importable on
+    # macOS and run the pet without window docking until it has a Quartz port.
+    WindowsDesktop = choose_attachment = ledge_position = None
+
+if IS_WINDOWS:
     # Other desktop tools may put an incompatible ICU DLL on PATH. Load the
     # Windows copy before Qt so its unversioned ICU entry points resolve.
     import ctypes
@@ -53,12 +62,19 @@ SKINS = {
 
 
 def settings_path() -> Path:
-    app_data = Path(os.environ.get("LOCALAPPDATA", Path.home())) / "LingWithMe"
+    if IS_MACOS:
+        base = Path.home() / "Library" / "Application Support"
+    else:
+        base = Path(os.environ.get("LOCALAPPDATA", Path.home()))
+    app_data = base / "LingWithMe"
     app_data.mkdir(parents=True, exist_ok=True)
     return app_data / "settings.ini"
 
 
 def confirm_microsoft_runtime_terms() -> bool:
+    # Only the Windows bundle ships the Microsoft Visual C++ runtime.
+    if not IS_WINDOWS:
+        return True
     settings = QSettings(str(settings_path()), QSettings.Format.IniFormat)
     if settings.value("microsoft_terms_accepted_v1", False, type=bool):
         return True
@@ -156,7 +172,8 @@ class LingWindow(QWidget):
         self.dragged = False
         self.x_position = 0.0
         self.last_tick = time.monotonic()
-        self.desktop = WindowsDesktop()
+        self.desktop = WindowsDesktop() if IS_WINDOWS else None
+        self.perch_supported = self.desktop is not None
         self.perch_handle: int | None = None
         self.perch_edge = "top"
         self.perch_offset = 0.0
@@ -168,6 +185,10 @@ class LingWindow(QWidget):
             | Qt.WindowType.Tool
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        if IS_MACOS:
+            # Qt hides a Tool window when the app deactivates; the pet must stay
+            # visible while the user works in other applications.
+            self.setAttribute(Qt.WidgetAttribute.WA_MacAlwaysShowToolWindow, True)
         self.setFixedSize(CELL_WIDTH, CELL_HEIGHT)
         # A fixed union avoids spurious leave events when animated silhouettes change.
         self.update_input_region()
@@ -259,6 +280,8 @@ class LingWindow(QWidget):
         return min(QGuiApplication.screens(), key=distance)
 
     def find_perch(self):
+        if self.desktop is None:
+            return None
         windows = self.desktop.windows(QGuiApplication.screens())
         screens = self.screen_rects()
         region = QRegion()
@@ -282,7 +305,7 @@ class LingWindow(QWidget):
         return "hanging" if self.perch_edge == "bottom" else "perched"
 
     def try_perch(self) -> bool:
-        if not self.dragged:
+        if not self.perch_supported or not self.dragged:
             return False
         choice = self.find_perch()
         if choice is None:
@@ -368,6 +391,9 @@ class LingWindow(QWidget):
         from PySide6.QtGui import QPainter
 
         painter = QPainter(self)
+        if IS_MACOS:
+            # Retina backing stores upscale the 1x sprite sheet; keep it smooth.
+            painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
         pixmap = self.frames[self.state][self.frame_index]
         if self.perch_handle is not None and self.reaction:
             painter.drawPixmap(47, 0, self.reaction_pixmap(pixmap))
@@ -509,13 +535,14 @@ class LingWindow(QWidget):
             self.begin_animation("idle", "rest")
             self.move(event.globalPosition().toPoint() - self.drag_offset)
             pointer = event.globalPosition().toPoint()
-            choice = self.find_perch()
-            hint = ("松开即可抓住这个窗口下沿" if choice and choice[3] == "bottom" else
-                    "松开即可趴在这个窗口上沿" if choice else
-                    "让人偶身体碰到窗口上沿或下沿，上沿需留约 105 像素空间")
-            if hint != self.drag_hint:
-                self.drag_hint = hint
-                QToolTip.showText(pointer + QPoint(16, 16), hint, self, self.rect(), 10000)
+            if self.perch_supported:
+                choice = self.find_perch()
+                hint = ("松开即可抓住这个窗口下沿" if choice and choice[3] == "bottom" else
+                        "松开即可趴在这个窗口上沿" if choice else
+                        "让人偶身体碰到窗口上沿或下沿，上沿需留约 105 像素空间")
+                if hint != self.drag_hint:
+                    self.drag_hint = hint
+                    QToolTip.showText(pointer + QPoint(16, 16), hint, self, self.rect(), 10000)
             event.accept()
 
     def mouseReleaseEvent(self, event) -> None:  # noqa: N802 - Qt override
@@ -528,8 +555,9 @@ class LingWindow(QWidget):
                 self.x_position = float(self.x())
                 if not self.try_perch():
                     self.return_to_desktop()
-                    QToolTip.showText(event.globalPosition().toPoint(),
-                                      "未能停靠：让人偶身体与窗口上沿或下沿重叠，上沿空间不足时请将窗口下移", self, self.rect(), 4000)
+                    if self.perch_supported:
+                        QToolTip.showText(event.globalPosition().toPoint(),
+                                          "未能停靠：让人偶身体与窗口上沿或下沿重叠，上沿空间不足时请将窗口下移", self, self.rect(), 4000)
             elif self.resting_state() != "hanging":
                 self.start_reaction("waving")
             self.dragged = False
