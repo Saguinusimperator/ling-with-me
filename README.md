@@ -1,7 +1,6 @@
 # Ling with me
 
-小灵是可以待在 Windows 桌面上的动画伙伴。解压便携包后即可运行，不需要安装 Python、ChatGPT 或 Codex，也不需要联网才能使用独立桌宠。
-
+小灵是可以待在 Windows 桌面上的动画伙伴。点击他就会开心雀跃哦。
 ![银色与红心白帽两套造型的真实播放预览](docs/assets/preview.gif)
 
 ## 下载与运行
@@ -11,7 +10,8 @@
 - [Windows 独立桌宠：Ling-Windows.zip](https://github.com/Saguinusimperator/ling-with-me/releases/download/v1.0/Ling-Windows.zip)：Windows 10 x64 或更新版本。
 - [Codex/ChatGPT Pets：Ling-Pets.zip](https://github.com/Saguinusimperator/ling-with-me/releases/download/v1.0/Ling-Pets.zip)：两套造型，按包内 `README.md` 安装。
 
-Windows 桌宠可以在电脑上独立使用。Pets 需要ChatGPT桌面应用和账号或工作区支持。
+Windows 桌宠可以在电脑上独立使用。
+Pets 需要ChatGPT桌面应用和账号或工作区支持。
 
 1. 下载完整的 `Ling-Windows.zip`。
 2. 完整解压 ZIP，保留其中整个 `Ling` 文件夹。
