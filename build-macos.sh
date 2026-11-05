@@ -2,7 +2,6 @@
 # Build the standalone Ling desktop pet for macOS (Apple Silicon, macOS 14+).
 #
 # Outputs:
-#   dist/Ling.app                  the application bundle
 #   dist/Ling-macOS-arm64.dmg      drag-to-Applications installer image
 #
 # The bundle is signed ad-hoc. It runs on the machine that built it and on
@@ -14,7 +13,7 @@ cd "$(dirname "$0")"
 APP_NAME="Ling"
 BUNDLE_ID="com.saguinusimperator.ling"
 VERSION="1.1.0"
-BUILD_NUMBER="1"
+BUILD_NUMBER="2"
 PYTHON_VERSION="3.13"
 DMG_PATH="dist/${APP_NAME}-macOS-arm64.dmg"
 
@@ -80,6 +79,13 @@ plist_set LSMinimumSystemVersion string "14.0"
 plist_set NSHighResolutionCapable bool true
 plist_set CFBundleDisplayName string "$APP_NAME"
 
+# Keep notices with the app when it is copied out of the DMG.
+NOTICES="$APP/Contents/Resources/Notices"
+mkdir -p "$NOTICES"
+cp README.md LICENSE-CODE.md LICENSE-ART.md LICENSE-SCRIPTS THIRD-PARTY-NOTICES.md "$NOTICES/"
+cp -R docs "$NOTICES/"
+cp -R licenses "$NOTICES/"
+
 # Changing Info.plist invalidates PyInstaller's signature, so sign last.
 codesign --force --deep --sign - "$APP"
 codesign --verify --deep --strict "$APP"
@@ -89,6 +95,8 @@ rm -rf "$STAGE"
 mkdir -p "$STAGE"
 cp -R "$APP" "$STAGE/"
 ln -s /Applications "$STAGE/Applications"
+cp README.md LICENSE-CODE.md LICENSE-ART.md LICENSE-SCRIPTS THIRD-PARTY-NOTICES.md "$STAGE/"
+cp -R licenses docs "$STAGE/"
 rm -f "$DMG_PATH"
 
 # macOS 26 replaced the classic "hdiutil create -srcfolder" form with one that

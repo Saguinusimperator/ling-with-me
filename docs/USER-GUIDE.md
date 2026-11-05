@@ -1,14 +1,16 @@
-# 小灵使用指南（Windows 独立桌宠）
+# 小灵使用指南（Windows / macOS 独立桌宠）
 
 ## 启动
 
 从 [v1.0 Release](https://github.com/Saguinusimperator/ling-with-me/releases/tag/v1.0) 下载完整的 `Ling-Windows.zip`，解压后打开 `Ling` 文件夹，双击 `Ling.exe`。请保留整个文件夹；单独复制 EXE 会缺少运行库和动画素材。独立桌宠不需要 Python、ChatGPT、Codex 或网络连接。
 
+Mac 用户从 [macOS 预览版](https://github.com/Saguinusimperator/ling-with-me/releases/tag/v1.1.0-macos-preview) 下载 DMG，拖入“应用程序”后启动。Mac 版没有 Dock 图标，请从小灵或菜单栏图标的右键菜单退出。安装、首次打开、更新与卸载见 [Mac 使用说明](MACOS.md)。下列动作和窗口停靠操作适用于两个平台。
+
 ## 日常操作
 
 - 小灵会在桌面底边随机播放九种普通动作：待机、向右走、向左走、挥手、跳跃、沮丧、等待、忙碌和检查。每轮都会播放全部九种。
 - 鼠标移到小灵身上会触发跳跃；单击会挥手。拖动可以调整小灵在桌面底边的位置、切换屏幕，或尝试停靠到窗口边缘。
-- 右键点击小灵，或右键点击系统托盘中的 Ling 图标，可以打开菜单。选择“播放动作”中的项目可手动播放一次；手动选择优先于悬停反应。
+- 右键点击小灵，或右键点击系统托盘（Mac 为菜单栏）中的 Ling 图标，可以打开菜单。选择“播放动作”中的项目可手动播放一次；手动选择优先于悬停反应。
 - “变装”可在银色原版和红心白帽之间切换。小灵会记住选择，下次启动继续使用。
 - “暂停活动”会停止自动动作和行走；仍可手动播放一次动作。选择“继续活动”恢复自动播放。
 - 从人物或托盘菜单选择“退出 Ling”即可退出。
@@ -31,9 +33,12 @@
 
 换装选择保存在当前 Windows 用户的 `%LOCALAPPDATA%\LingWithMe\settings.ini`。如果要移除便携版，先退出小灵，再删除解压出的 `Ling` 文件夹；如需同时清除换装设置，再删除上述 `LingWithMe` 设置文件夹。
 
+Mac 设置保存在 `~/Library/Application Support/LingWithMe/settings.ini`。先从菜单退出，再将“应用程序”里的 Ling 移到废纸篓；如需清除换装设置，再删除上述 `LingWithMe` 文件夹。
+
 ## 启动问题
 
 - 双击后没有看到小灵：先检查系统托盘，再确认解压出了完整的 `Ling` 文件夹，而非单独运行 EXE。
 - 提示缺少文件或无法加载动作：重新完整解压 ZIP，不要改动 `Ling/_internal` 中的文件。
 - 无法停靠：确保正在拖动、目标是普通可见窗口，且窗口上沿留有空间；也可尝试换一个窗口。
-- 遇到其他问题：到[Issues](https://github.com/Saguinusimperator/ling-with-me/issues)描述 Windows 环境、操作步骤和看到的提示。请勿上传个人桌面截图或私人资料。
+- Mac 打开被拦截或看不到 Dock 图标：见 [Mac 使用说明](MACOS.md)。
+- 遇到其他问题：到[Issues](https://github.com/Saguinusimperator/ling-with-me/issues)描述操作系统版本、操作步骤和看到的提示。请勿上传个人桌面截图或私人资料。

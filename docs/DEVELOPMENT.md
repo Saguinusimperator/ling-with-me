@@ -41,7 +41,17 @@ git diff --check
 
 后两项需要实际 Windows 图形桌面；播放录制还需要 FFmpeg。`smoke_windows.py` 在 `build/perch-qa/` 留下截图与动画，`smoke_playback.py` 在 `build/playback-qa/` 留下 30 秒录制和计时数据。它们不能替代打包版菜单实际操作、另一台干净 Windows 电脑上的试用。
 
-## 便携 ZIP 与发布流程
+## macOS 构建与预览发布
+
+准备 uv 和 Python 3.13，在 Apple Silicon Mac 上执行 `bash build-macos.sh`。若没有 `.venv`，脚本用 uv 创建环境；已有环境会直接复用，因此换平台或 Python 版本时应先检查环境。依赖版本见 `requirements-build.txt`。产物为 `dist/Ling-macOS-arm64.dmg`；脚本签名、校验并清除临时 app 副本。
+
+DMG 和应用内部 `Contents/Resources/Notices/` 均保留原创许可、第三方许可与使用说明。修改包内文件必须发生在签名前；签名后再创建 DMG。
+
+发布前从最终 DMG 复制应用，确认启动/退出、九动作、换装记忆、悬停/单击/拖动、上下沿吸附、遮挡解除、暂停跟随、关窗/最小化解除。首次网络下载的 Gatekeeper 提示应按实际环境记录，不能用本机直接构建启动代替。没有验证的系统、显示器或桌面模式如实列为限制，不为预览版扩展测试框架。
+
+Mac 预览版使用 `v1.1.0-macos-preview`，应用版本 `1.1.0`、构建号 `2`。完成文档后重建最终 DMG，记录 SHA-256 和对应提交；提交源码、推送标签，创建 GitHub pre-release（不设为 Latest），仅附加 DMG。发布后检查下载链接和远端附件摘要。v1.0 的 Windows/Pets/Qt 源码附件保持原样。
+
+## Windows 便携 ZIP 与发布流程
 
 1. 先确认文件夹版 `dist/Ling/Ling.exe` 能启动和退出，并检查动作、换装、停靠、悬挂、暂停、菜单与托盘。
 2. 将**整个** `dist/Ling` 文件夹与 `README.md`、`LICENSE-CODE.md`、`LICENSE-ART.md`、`LICENSE-SCRIPTS`、`THIRD-PARTY-NOTICES.md`、`MICROSOFT-TERMS.md` 和 `licenses/` 一起压缩；不要只发送 EXE。正式发布包还须使用已核对的微软运行库文件。
