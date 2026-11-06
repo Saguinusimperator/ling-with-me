@@ -1,7 +1,7 @@
 # Ling with me
 
 小灵是可以待在桌面上的动画伙伴。点击他就会开心雀跃哦。
-![银色与红心白帽两套造型的真实播放预览](docs/assets/preview.gif)
+![银色与红心白帽两套造型的 2× 高清播放预览](docs/assets/preview.gif)
 
 ## 下载
 
