@@ -1,0 +1,4 @@
+# Build-only dependencies for tools/build_retina_assets.py (2x asset rebuild).
+# Not imported by the desktop pet; never bundled into the app.
+numpy==2.5.4
+scipy==1.18.1

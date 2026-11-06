@@ -7,7 +7,7 @@
 
 | 平台 | 下载 | 运行要求 |
 | --- | --- | --- |
-| macOS（预览版） | [Ling-macOS-arm64.dmg](https://github.com/Saguinusimperator/ling-with-me/releases/download/v1.1.0-macos-preview/Ling-macOS-arm64.dmg) · [发布说明](https://github.com/Saguinusimperator/ling-with-me/releases/tag/v1.1.0-macos-preview) | Apple Silicon（M 系列）；目标最低 macOS 14，当前实测 macOS 27.0；不提供 Intel 版 |
+| macOS（预览版） | [Ling-macOS-arm64.dmg](https://github.com/Saguinusimperator/ling-with-me/releases/download/v1.2.0-macos-preview/Ling-macOS-arm64.dmg) · [发布说明](https://github.com/Saguinusimperator/ling-with-me/releases/tag/v1.2.0-macos-preview) | Apple Silicon（M 系列）；目标最低 macOS 14，当前实测 macOS 27.0；不提供 Intel 版；Retina 屏幕使用 2× 图集 |
 | Windows v1.0 | [Ling-Windows.zip](https://github.com/Saguinusimperator/ling-with-me/releases/download/v1.0/Ling-Windows.zip) · [发布说明](https://github.com/Saguinusimperator/ling-with-me/releases/tag/v1.0) | Windows 10 x64 或更新版本 |
 | ChatGPT Pets | [Ling-Pets.zip](https://github.com/Saguinusimperator/ling-with-me/releases/download/v1.0/Ling-Pets.zip) | 桌面应用及账号或工作区支持 Pets，按包内 README 安装 |
 
@@ -25,7 +25,7 @@ Mac 预览版采用临时签名，未经 Apple Developer ID 签名和公证。�
 
 ## 其他信息
 
-- [Mac 使用说明与已知限制](docs/MACOS.md)：Retina 上素材可能偏软，多屏、全屏及 Stage Manager 尚未完整验证。
+- [Mac 使用说明与已知限制](docs/MACOS.md)：Retina 屏幕使用 2× 图集；多屏、全屏及 Stage Manager 尚未完整验证。
 - [ChatGPT Pets 可选适配](docs/PETS.md)。
 - [主程序授权](LICENSE-CODE.md)、[素材授权说明](LICENSE-ART.md)、[安装脚本许可](LICENSE-SCRIPTS)、[第三方许可说明](THIRD-PARTY-NOTICES.md)；[微软组件条款](MICROSOFT-TERMS.md)仅适用于 Windows 包。
 - [反馈问题](https://github.com/Saguinusimperator/ling-with-me/issues)。

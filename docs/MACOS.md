@@ -2,7 +2,7 @@
 
 ## 下载与安装
 
-下载 [Ling-macOS-arm64.dmg](https://github.com/Saguinusimperator/ling-with-me/releases/download/v1.1.0-macos-preview/Ling-macOS-arm64.dmg)，[发布说明与 SHA-256](https://github.com/Saguinusimperator/ling-with-me/releases/tag/v1.1.0-macos-preview)见预览版页面。
+下载 [Ling-macOS-arm64.dmg](https://github.com/Saguinusimperator/ling-with-me/releases/download/v1.2.0-macos-preview/Ling-macOS-arm64.dmg)，[发布说明与 SHA-256](https://github.com/Saguinusimperator/ling-with-me/releases/tag/v1.2.0-macos-preview)见预览版页面。本版 Retina 屏幕改用 2× 图集，清晰度明显提升。
 
 - Apple Silicon（M 系列），不提供 Intel 版。
 - 目标最低系统为 macOS 14；当前实际验证环境为 macOS 27.0，未在 macOS 14 上实测。
@@ -32,7 +32,7 @@
 
 2026-11-05 在 macOS 27.0、Apple Silicon、单块 2× Retina 屏幕上，以临时真实 Qt 窗口验证了两套造型的上下沿吸附、移动/缩放跟随、暂停时跟随、隐藏、遮挡、最小化、关闭后解除和趴姿挥手。新版安装到“应用程序”并启动后，使用者已确认功能可用。
 
-- 素材是 1× 图集，Retina 屏幕上可能偏软。
+- Retina 屏幕使用 2× 图集（由原始生成条图重建），非 Retina 屏幕和 ChatGPT Pets 仍使用 1× 图集。
 - 多屏及混合缩放、全屏应用和 Stage Manager 尚未完整验证。
 - 只绑定当前桌面的可见普通窗口，不跨重启或跨桌面恢复。
 - 预览版没有自动更新或开机自启。系统提供的窗口信息可能随 macOS 版本变化。

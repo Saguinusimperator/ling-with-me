@@ -49,7 +49,7 @@ DMG 和应用内部 `Contents/Resources/Notices/` 均保留原创许可、第三
 
 发布前从最终 DMG 复制应用，确认启动/退出、九动作、换装记忆、悬停/单击/拖动、上下沿吸附、遮挡解除、暂停跟随、关窗/最小化解除。首次网络下载的 Gatekeeper 提示应按实际环境记录，不能用本机直接构建启动代替。没有验证的系统、显示器或桌面模式如实列为限制，不为预览版扩展测试框架。
 
-Mac 预览版使用 `v1.1.0-macos-preview`，应用版本 `1.1.0`、构建号 `2`。完成文档后重建最终 DMG，记录 SHA-256 和对应提交；提交源码、推送标签，创建 GitHub pre-release（不设为 Latest），仅附加 DMG。发布后检查下载链接和远端附件摘要。v1.0 的 Windows/Pets/Qt 源码附件保持原样。
+Mac 预览版使用 `v1.2.0-macos-preview`，应用版本 `1.2.0`、构建号 `3`，Retina 屏幕启用 2× 图集。完成文档后重建最终 DMG，记录 SHA-256 和对应提交；提交源码、推送标签，创建 GitHub pre-release（不设为 Latest），仅附加 DMG。发布后检查下载链接和远端附件摘要。v1.0 的 Windows/Pets/Qt 源码附件保持原样。
 
 ## Windows 便携 ZIP 与发布流程
 
@@ -58,6 +58,14 @@ Mac 预览版使用 `v1.1.0-macos-preview`，应用版本 `1.1.0`、构建号 `2
 3. 解压 ZIP 到另一个目录，核对图集、Qt 平台插件和运行库，并实际启动解压版。记录包体大小、SHA-256 和对应源码 Commit。
 4. 检查仓库及包体没有密钥、个人路径、调试日志或私人制作记录。授权与第三方许可验收通过后，再准备 Release 和 README 正式下载入口。
 5. 正式分享前请另一台干净 Windows 电脑的使用者验证下载、解压、启动、操作与退出；记录环境、结果和限制。
+
+## Retina 图集（2×）
+
+`pet/<skin>/spritesheet@2x.webp`、`perch@2x.png`、`hang@2x.png` 由原始生成条图重建，脚本是 `tools/build_retina_assets.py`，依赖 `requirements-assets.txt`（numpy、scipy）。这些依赖只用于构建素材，不会打进应用。
+
+原始条图不在仓库内，运行时用 `--source-root` 指向外接盘 `ling/` 目录（`ling-pet-run/decoded`、`versions/ling-heart/decoded`、`ling-with-me/build/{perch,hanging}-qa/source`）。脚本对每帧做蓝底抠图、去溢色和连通域清理，再用掩码配准把 1× 帧映射回源图，输出 384×416 单格与 3072×3744 图集；`build/retina-qa/registration.json` 记录每帧的缩放、偏移和回采 IoU。`failed`、`left` 等动作的源图与成品存在轻微差异，修改后用该报告逐行核对。
+
+运行时由 `preferred_scale()` 决定：仅 macOS 且屏幕 `devicePixelRatio ≥ 1.5` 时加载 2×；Windows 和非 Retina 屏幕始终使用 1×。ChatGPT Pets 的图集格式固定为 1536×1872，必须继续使用 1× 文件。只改 1× 或只改 2× 素材都会造成两套渲染不一致。
 
 ## 已知边界
 

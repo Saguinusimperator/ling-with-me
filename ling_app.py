@@ -95,18 +95,31 @@ def confirm_microsoft_runtime_terms() -> bool:
     return True
 
 
-def sheet_path(skin_id: str = "ling") -> Path:
+def sheet_path(skin_id: str = "ling", scale: int = 1) -> Path:
     # PyInstaller's one-folder build keeps bundled data under _MEIPASS.
     if skin_id not in SKINS:
         raise ValueError(f"Unknown Ling skin: {skin_id}")
     root = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
-    return root / "pet" / skin_id / "spritesheet.webp"
+    name = "spritesheet@2x.webp" if scale == 2 else "spritesheet.webp"
+    return root / "pet" / skin_id / name
 
 
-def load_frames(path: Path) -> dict[str, list[QPixmap]]:
+def preferred_scale() -> int:
+    """Use the 2x artwork only on Retina macOS, and only when it is bundled."""
+    if not IS_MACOS:
+        return 1
+    screen = QGuiApplication.primaryScreen()
+    if screen is None or screen.devicePixelRatio() < 1.5:
+        return 1
+    return 2 if sheet_path("ling", 2).exists() else 1
+
+
+def load_frames(path: Path, scale: int = 1) -> dict[str, list[QPixmap]]:
+    cell_width, cell_height = CELL_WIDTH * scale, CELL_HEIGHT * scale
+    sheet_size = (SHEET_SIZE[0] * scale, SHEET_SIZE[1] * scale)
     with Image.open(path) as source:
-        if source.size != SHEET_SIZE:
-            raise ValueError(f"Expected a {SHEET_SIZE[0]}×{SHEET_SIZE[1]} sprite sheet")
+        if source.size != sheet_size:
+            raise ValueError(f"Expected a {sheet_size[0]}×{sheet_size[1]} sprite sheet")
         sheet = source.convert("RGBA")
 
     frames = {}
@@ -115,10 +128,10 @@ def load_frames(path: Path) -> dict[str, list[QPixmap]]:
         for column in range(count):
             frame = sheet.crop(
                 (
-                    column * CELL_WIDTH,
-                    row * CELL_HEIGHT,
-                    (column + 1) * CELL_WIDTH,
-                    (row + 1) * CELL_HEIGHT,
+                    column * cell_width,
+                    row * cell_height,
+                    (column + 1) * cell_width,
+                    (row + 1) * cell_height,
                 )
             )
             # PNG transfer avoids depending on Qt's optional WebP image plugin.
@@ -127,22 +140,39 @@ def load_frames(path: Path) -> dict[str, list[QPixmap]]:
             pixmap = QPixmap()
             if not pixmap.loadFromData(buffer.getvalue(), "PNG"):
                 raise ValueError(f"Could not load {name} frame {column}")
+            pixmap.setDevicePixelRatio(scale)
             images.append(pixmap)
         frames[name] = images
     for name, filename, count in (("perched", "perch.png", 6), ("hanging", "hang.png", 8)):
-        with Image.open(path.with_name(filename)) as source:
-            if source.size != (CELL_WIDTH * count, CELL_HEIGHT):
-                raise ValueError(f"Expected {count} cells in {filename}")
+        strip_name = f"{Path(filename).stem}@2x.png" if scale == 2 else filename
+        with Image.open(path.with_name(strip_name)) as source:
+            if source.size != (cell_width * count, cell_height):
+                raise ValueError(f"Expected {count} cells in {strip_name}")
             images = []
             for column in range(count):
                 buffer = io.BytesIO()
-                source.crop((column * CELL_WIDTH, 0, (column + 1) * CELL_WIDTH, CELL_HEIGHT)).save(buffer, format="PNG")
+                source.crop((column * cell_width, 0, (column + 1) * cell_width, cell_height)).save(buffer, format="PNG")
                 pixmap = QPixmap()
                 if not pixmap.loadFromData(buffer.getvalue(), "PNG"):
-                    raise ValueError(f"Could not load {filename} frame")
+                    raise ValueError(f"Could not load {strip_name} frame")
+                pixmap.setDevicePixelRatio(scale)
                 images.append(pixmap)
             frames[name] = images
     return frames
+
+
+def pixmap_region(pixmap: QPixmap) -> QRegion:
+    """Hit region in widget (logical) coordinates, including for 2x pixmaps."""
+    ratio = pixmap.devicePixelRatio()
+    if ratio <= 1.0:
+        return QRegion(pixmap.mask())
+    image = pixmap.toImage().scaled(
+        round(pixmap.width() / ratio),
+        round(pixmap.height() / ratio),
+        Qt.AspectRatioMode.IgnoreAspectRatio,
+        Qt.TransformationMode.FastTransformation,
+    )
+    return QRegion(QPixmap.fromImage(image).mask())
 
 
 class LingWindow(QWidget):
@@ -151,6 +181,7 @@ class LingWindow(QWidget):
         self.frame_sets = frame_sets
         self.skin_id = skin_id
         self.frames = frame_sets[skin_id]
+        self.frame_regions = self.build_frame_regions()
         self.settings = QSettings(str(settings_path()), QSettings.Format.IniFormat)
         self.tray: QSystemTrayIcon | None = None
         self.rng = random.Random()
@@ -350,18 +381,21 @@ class LingWindow(QWidget):
     def show_frame(self) -> None:
         self.update()
 
+    def build_frame_regions(self) -> dict[str, list[QRegion]]:
+        return {name: [pixmap_region(pixmap) for pixmap in frames] for name, frames in self.frames.items()}
+
     def update_input_region(self) -> None:
         region = QRegion()
-        animations = ([self.frames[self.state]] if self.state in ("perched", "hanging") else
-                      [v for k, v in self.frames.items() if k not in ("perched", "hanging")])
-        for animation in animations:
-            for pixmap in animation:
+        names = ([self.state] if self.state in ("perched", "hanging") else
+                 [name for name in self.frames if name not in ("perched", "hanging")])
+        for name in names:
+            for pixmap, base in zip(self.frames[name], self.frame_regions[name]):
                 if self.perch_handle is not None and self.reaction:
-                    region |= QRegion(self.reaction_pixmap(pixmap).mask()).translated(47, 0)
+                    region |= pixmap_region(self.reaction_pixmap(pixmap)).translated(47, 0)
                 elif self.state == "perched":
-                    region |= QRegion(pixmap.mask()).translated(0, -PERCH_TOP_PADDING)
+                    region |= base.translated(0, -PERCH_TOP_PADDING)
                 else:
-                    region |= QRegion(pixmap.mask())
+                    region |= base
         self.input_region = region
         self.setMask(region)
 
@@ -370,6 +404,7 @@ class LingWindow(QWidget):
             return
         self.skin_id = skin_id
         self.frames = self.frame_sets[skin_id]
+        self.frame_regions = self.build_frame_regions()
         self.reaction = None
         self.walking = False
         self.hovering = False
@@ -402,8 +437,12 @@ class LingWindow(QWidget):
 
     def reaction_pixmap(self, pixmap: QPixmap) -> QPixmap:
         # Fit the standing gesture above the resting pose's ledge contact.
-        return pixmap.scaled(98, 106, Qt.AspectRatioMode.IgnoreAspectRatio,
-                             Qt.TransformationMode.SmoothTransformation)
+        ratio = pixmap.devicePixelRatio()
+        scaled = pixmap.scaled(round(98 * ratio), round(106 * ratio),
+                               Qt.AspectRatioMode.IgnoreAspectRatio,
+                               Qt.TransformationMode.SmoothTransformation)
+        scaled.setDevicePixelRatio(ratio)
+        return scaled
 
     def next_frame(self) -> None:
         if self.drag_offset is not None or (self.paused and self.playback_mode != "manual"):
@@ -570,7 +609,8 @@ def main() -> int:
     if not confirm_microsoft_runtime_terms():
         return 0
     try:
-        frame_sets = {skin_id: load_frames(sheet_path(skin_id)) for skin_id in SKINS}
+        scale = preferred_scale()
+        frame_sets = {skin_id: load_frames(sheet_path(skin_id, scale), scale) for skin_id in SKINS}
         saved_skin = QSettings(str(settings_path()), QSettings.Format.IniFormat).value("skin_id", "ling")
         skin_id = saved_skin if saved_skin in SKINS else "ling"
         window = LingWindow(frame_sets, skin_id)

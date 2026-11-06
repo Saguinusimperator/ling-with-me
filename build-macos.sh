@@ -12,8 +12,8 @@ cd "$(dirname "$0")"
 
 APP_NAME="Ling"
 BUNDLE_ID="com.saguinusimperator.ling"
-VERSION="1.1.0"
-BUILD_NUMBER="2"
+VERSION="1.2.0"
+BUILD_NUMBER="3"
 PYTHON_VERSION="3.13"
 DMG_PATH="dist/${APP_NAME}-macOS-arm64.dmg"
 
@@ -61,6 +61,12 @@ fi
   --add-data "$PWD/pet/ling-heart/perch.png:pet/ling-heart" \
   --add-data "$PWD/pet/ling/hang.png:pet/ling" \
   --add-data "$PWD/pet/ling-heart/hang.png:pet/ling-heart" \
+  --add-data "$PWD/pet/ling/spritesheet@2x.webp:pet/ling" \
+  --add-data "$PWD/pet/ling-heart/spritesheet@2x.webp:pet/ling-heart" \
+  --add-data "$PWD/pet/ling/perch@2x.png:pet/ling" \
+  --add-data "$PWD/pet/ling-heart/perch@2x.png:pet/ling-heart" \
+  --add-data "$PWD/pet/ling/hang@2x.png:pet/ling" \
+  --add-data "$PWD/pet/ling-heart/hang@2x.png:pet/ling-heart" \
   ling_app.py
 
 APP="dist/${APP_NAME}.app"
@@ -87,6 +93,8 @@ cp -R docs "$NOTICES/"
 cp -R licenses "$NOTICES/"
 
 # Changing Info.plist invalidates PyInstaller's signature, so sign last.
+# Strip stray Finder metadata first: it makes strict signature checks fail.
+xattr -cr "$APP"
 codesign --force --deep --sign - "$APP"
 codesign --verify --deep --strict "$APP"
 
@@ -94,6 +102,7 @@ STAGE="build/dmg"
 rm -rf "$STAGE"
 mkdir -p "$STAGE"
 cp -R "$APP" "$STAGE/"
+xattr -cr "$STAGE/$APP_NAME.app"
 ln -s /Applications "$STAGE/Applications"
 cp README.md LICENSE-CODE.md LICENSE-ART.md LICENSE-SCRIPTS THIRD-PARTY-NOTICES.md "$STAGE/"
 cp -R licenses docs "$STAGE/"
