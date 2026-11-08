@@ -7,8 +7,8 @@
 
 | 平台 | 下载 | 运行要求 |
 | --- | --- | --- |
-| macOS（预览版） | [Ling-macOS-arm64.dmg](https://github.com/Saguinusimperator/ling-with-me/releases/download/v1.2.0-macos-preview/Ling-macOS-arm64.dmg) · [发布说明](https://github.com/Saguinusimperator/ling-with-me/releases/tag/v1.2.0-macos-preview) | Apple Silicon（M 系列）；目标最低 macOS 14，当前实测 macOS 27.0；不提供 Intel 版；Retina 屏幕使用 2× 图集 |
-| Windows v1.0 | [Ling-Windows.zip](https://github.com/Saguinusimperator/ling-with-me/releases/download/v1.0/Ling-Windows.zip) · [发布说明](https://github.com/Saguinusimperator/ling-with-me/releases/tag/v1.0) | Windows 10 x64 或更新版本 |
+| macOS（预览版） | [Ling-macOS-arm64.dmg](https://github.com/Saguinusimperator/ling-with-me/releases/download/v1.3.1/Ling-macOS-arm64.dmg) · [发布说明](https://github.com/Saguinusimperator/ling-with-me/releases/tag/v1.3.1) | Apple Silicon（M 系列）；目标最低 macOS 14，当前实测 macOS 27.0；不提供 Intel 版；Retina 屏幕使用 2× 图集 |
+| Windows v1.3.1 | [Ling-Windows.zip](https://github.com/Saguinusimperator/ling-with-me/releases/download/v1.3.1/Ling-Windows.zip) · [发布说明](https://github.com/Saguinusimperator/ling-with-me/releases/tag/v1.3.1) | Windows 10 x64 或更新版本 |
 | ChatGPT Pets | [Ling-Pets.zip](https://github.com/Saguinusimperator/ling-with-me/releases/download/v1.0/Ling-Pets.zip) | 桌面应用及账号或工作区支持 Pets，按包内 README 安装 |
 
 Windows 和 Mac 独立桌宠不需要 Python、ChatGPT、Codex 或网络连接。Pets 是另一种可选使用方式。
