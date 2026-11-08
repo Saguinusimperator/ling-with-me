@@ -49,13 +49,14 @@ ANIMATION_CYCLE_MS = 1600
 MOVE_INTERVAL_MS = 33
 WALK_SPEED = 48.0  # Qt's device-independent pixels per second
 PERCH_TOP_PADDING = 84
-PERCH_ANCHORS = {"ling": (96, 104), "ling-heart": (96, 104)}
-HANG_ANCHORS = {"ling": (96, 10), "ling-heart": (96, 10)}
-HANG_GRIP_OFFSETS = {"ling": (-22, 22), "ling-heart": (-16.56, 16.56)}
+PERCH_ANCHORS = {"ling": (96, 104), "ling-heart": (96, 104), "ling-feather": (96, 104)}
+HANG_ANCHORS = {"ling": (96, 10), "ling-heart": (96, 10), "ling-feather": (96, 10)}
+HANG_GRIP_OFFSETS = {"ling": (-22, 22), "ling-heart": (-16.56, 16.56), "ling-feather": (-22, 22)}
 HANG_FRAME_INTERVAL_MS = 250
 SKINS = {
     "ling": "银色原版",
     "ling-heart": "红心白帽",
+    "ling-feather": "白羽毛",
 }
 
 

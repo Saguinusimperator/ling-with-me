@@ -12,8 +12,8 @@ cd "$(dirname "$0")"
 
 APP_NAME="Ling"
 BUNDLE_ID="com.saguinusimperator.ling"
-VERSION="1.2.0"
-BUILD_NUMBER="3"
+VERSION="1.3.0"
+BUILD_NUMBER="4"
 PYTHON_VERSION="3.13"
 DMG_PATH="dist/${APP_NAME}-macOS-arm64.dmg"
 
@@ -67,6 +67,13 @@ fi
   --add-data "$PWD/pet/ling-heart/perch@2x.png:pet/ling-heart" \
   --add-data "$PWD/pet/ling/hang@2x.png:pet/ling" \
   --add-data "$PWD/pet/ling-heart/hang@2x.png:pet/ling-heart" \
+  --add-data "$PWD/pet/ling-feather/spritesheet.webp:pet/ling-feather" \
+  --add-data "$PWD/pet/ling-feather/spritesheet@2x.webp:pet/ling-feather" \
+  --add-data "$PWD/pet/ling-feather/perch.png:pet/ling-feather" \
+  --add-data "$PWD/pet/ling-feather/perch@2x.png:pet/ling-feather" \
+  --add-data "$PWD/pet/ling-feather/hang.png:pet/ling-feather" \
+  --add-data "$PWD/pet/ling-feather/hang@2x.png:pet/ling-feather" \
+  --add-data "$PWD/pet/ling-feather/pet.json:pet/ling-feather" \
   ling_app.py
 
 APP="dist/${APP_NAME}.app"

@@ -49,14 +49,14 @@ def main():
                     if not rows or rows[-1]['state'] != p.state:
                         rows.append({'seconds': round(elapsed, 3), 'state': p.state})
                 if elapsed >= frame_number / 10:
-                    image = QImage(800, 400, QImage.Format.Format_RGB32)
+                    image = QImage(max(800, len(pets) * 300), 400, QImage.Format.Format_RGB32)
                     image.fill(QColor('#f6f8fb'))
                     painter = QPainter(image)
                     painter.setFont(QFont('Segoe UI', 15))
                     painter.setPen(QColor('#243447'))
                     painter.drawText(24, 34, 'Ling | real-time widget capture | 1.6 s per cycle')
                     for i, p in enumerate(pets):
-                        x = 115 + i * 390
+                        x = 45 + i * 300
                         painter.setFont(QFont('Segoe UI', 12))
                         painter.drawText(x, 83, p.skin_id)
                         painter.drawText(x, 110, labels[p.state])

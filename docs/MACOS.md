@@ -42,3 +42,7 @@
 准备 uv 和 Python 3.13，在 Apple Silicon Mac 的仓库根目录执行 `bash build-macos.sh`。脚本创建或复用 `.venv`、安装固定依赖，并生成 `dist/Ling-macOS-arm64.dmg`。仅 Mac 安装 `pyobjc-framework-Quartz`，Windows 会自动跳过。
 
 源码运行：安装 `requirements-build.txt` 后执行 `python ling_app.py`。更多构建和发布信息见[开发文档](DEVELOPMENT.md)。
+
+## 本地白羽毛换装预览（1.3.0）
+
+右键小灵 →「变装」→「白羽毛」。保留银色原版与红心白帽；白羽毛全部动作不含麦克风。素材同时提供 1× 与 2× 图集。该造型为本地预览，尚未发布到下载链接。

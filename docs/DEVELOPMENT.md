@@ -6,7 +6,7 @@
 
 - `ling_app.py` 是 Windows/macOS 独立桌宠入口，负责 Qt 窗口、动作播放、菜单、换装和设置。
 - `window_perch.py` 提供共享的窗口边缘候选、遮挡与坐标判断，以及 Windows 窗口枚举；`macos_perch.py` 提供 Mac 窗口枚举。
-- `pet/ling/` 和 `pet/ling-heart/` 各有 8 列 × 9 行、单格 192 × 208 的 `spritesheet.webp`，以及独立桌宠专用的 `perch.png`、`hang.png`。`pet.json` 是 Pets 清单。
+- `pet/ling/`、`pet/ling-heart/` 和 `pet/ling-feather/` 各有 8 列 × 9 行、单格 192 × 208 的 `spritesheet.webp`，以及独立桌宠专用的 `perch.png`、`hang.png`。`pet.json` 是 Pets 清单。
 - `install.ps1` 和 `install.sh` 安装可选 Pets；`.github/workflows/install-macos.yml` 检查 macOS 脚本的重复安装与冲突处理。
 - `build-windows.ps1` 和 `requirements-build.txt` 生成 Windows 文件夹版；`tools/build_windows.py` 处理 PyInstaller 的 Windows ICU 预加载。
 - `test_playback.py`、`test_window_perch.py` 是单元测试；`tools/smoke_playback.py` 录制真实 Qt 播放；`tools/smoke_windows.py` 通过临时真实窗口验证停靠、悬挂与解除。
