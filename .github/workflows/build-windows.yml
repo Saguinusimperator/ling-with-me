@@ -1,0 +1,44 @@
+name: build-windows
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'windows-*'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Build the portable folder and ZIP
+        shell: pwsh
+        run: ./build-windows.ps1 -IndexUrl https://pypi.org/simple
+
+      - name: Check the outfit assets made it into the bundle
+        shell: pwsh
+        run: |
+          $missing = @()
+          foreach ($skin in @('ling', 'ling-heart', 'ling-feather')) {
+            foreach ($file in @('spritesheet.webp', 'perch.png', 'hang.png')) {
+              if (-not (Get-ChildItem -Path dist\Ling -Recurse -Filter $file |
+                        Where-Object { $_.FullName -match "pet[\\/]$skin[\\/]" })) {
+                $missing += "$skin/$file"
+              }
+            }
+          }
+          if ($missing.Count -gt 0) { throw "Missing assets: $($missing -join ', ')" }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Ling-Windows
+          path: Ling-Windows.zip
+          if-no-files-found: error

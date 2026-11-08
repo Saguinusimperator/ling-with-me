@@ -28,6 +28,9 @@ try {
         --add-data 'pet/ling-heart/perch.png;pet/ling-heart' `
         --add-data 'pet/ling/hang.png;pet/ling' `
         --add-data 'pet/ling-heart/hang.png;pet/ling-heart' `
+        --add-data 'pet/ling-feather/spritesheet.webp;pet/ling-feather' `
+        --add-data 'pet/ling-feather/perch.png;pet/ling-feather' `
+        --add-data 'pet/ling-feather/hang.png;pet/ling-feather' `
         --add-binary '.venv/Lib/site-packages/PySide6/plugins/platforms/qwindows.dll;PySide6/plugins/platforms' `
         ling_app.py
     if ($LASTEXITCODE -ne 0) { throw 'Could not build Ling.' }
