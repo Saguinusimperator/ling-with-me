@@ -12,8 +12,8 @@ cd "$(dirname "$0")"
 
 APP_NAME="Ling"
 BUNDLE_ID="com.saguinusimperator.ling"
-VERSION="1.3.0"
-BUILD_NUMBER="4"
+VERSION="1.3.1"
+BUILD_NUMBER="5"
 PYTHON_VERSION="3.13"
 DMG_PATH="dist/${APP_NAME}-macOS-arm64.dmg"
 

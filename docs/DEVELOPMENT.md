@@ -67,6 +67,24 @@ Mac 预览版使用 `v1.2.0-macos-preview`，应用版本 `1.2.0`、构建号 `3
 
 运行时由 `preferred_scale()` 决定：仅 macOS 且屏幕 `devicePixelRatio ≥ 1.5` 时加载 2×；Windows 和非 Retina 屏幕始终使用 1×。ChatGPT Pets 的图集格式固定为 1536×1872，必须继续使用 1× 文件。只改 1× 或只改 2× 素材都会造成两套渲染不一致。
 
+### 白羽毛逐动作高清源图
+
+白羽毛的九组常规动作使用独立源图，经 `tools/pack_feather_hires.py` 重新裁切、去蓝底并配准。
+每个动作文件按状态命名：`idle.png`、`right.png`、`left.png`、`waving.png`、`jumping.png`、
+`failed.png`、`waiting.png`、`running.png`、`review.png`。6 帧采用 3×2，8 帧采用 4×2，
+挥手采用 2×2，跳跃采用 3×2（最后一格留空）；均按从左到右、从上到下读取。
+源图使用纯蓝 `#0002FC`，每格原生尺寸至少 384×416，建议 512×512。
+
+```sh
+.venv/bin/python tools/pack_feather_hires.py \
+  --source-root private/work/ling-feather/hires-v2/actions
+```
+
+脚本拒绝尺寸不足、角色碰到单格边缘、角色必须放大才能达到显示尺寸的输入；通过全部检查后，
+才写入 1×/2× 主图集。每组动作使用一致的缩放；跳跃保留起落高度。输出不加锐化或超分，
+报告记录每帧的源尺寸、边界、采样比例和源文件 SHA-256。趴姿、悬挂及其他造型均不修改。
+原始生成图、提示词、旧素材备份和验收图保存在忽略的 `private/`，不进入发布包。
+
 ## 已知边界
 
 独立桌宠支持 Windows 和 macOS；Mac 使用 Quartz 读取窗口并复用相同的停靠几何，详见 [Mac 说明](MACOS.md)。窗口绑定不跨重启保存。当前项目未设置开机自启或自动更新。v1.0 的 Windows 便携包已在另一台电脑上解压并启动。仓库外的私人素材制作记录不会随 Git 同步，需要单独备份。
